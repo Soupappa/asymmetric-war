@@ -1,96 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 7%;
+    --foreground: 45 10% 75%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 18% 10%;
+    --card-foreground: 45 10% 75%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 45 10% 75%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 45 90% 55%;
+    --primary-foreground: 220 20% 7%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 45 10% 75%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 14%;
+    --muted-foreground: 220 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 70% 50%;
+    --accent-foreground: 0 0% 95%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 0 0% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 45 90% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Game-specific tokens */
+    --coalition-primary: 210 80% 55%;
+    --coalition-glow: 210 90% 65%;
+    --regime-primary: 0 70% 50%;
+    --regime-glow: 0 80% 60%;
+    --success: 120 60% 40%;
+    --success-foreground: 120 60% 75%;
+    --warning: 35 90% 55%;
+    --danger: 0 70% 50%;
+    --info: 200 70% 50%;
+    --scanline-opacity: 0.03;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --font-display: 'Orbitron', monospace;
+    --font-mono: 'JetBrains Mono', monospace;
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 18% 10%;
+    --sidebar-foreground: 45 10% 75%;
+    --sidebar-primary: 45 90% 55%;
+    --sidebar-primary-foreground: 220 20% 7%;
+    --sidebar-accent: 220 15% 16%;
+    --sidebar-accent-foreground: 45 10% 75%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 45 90% 55%;
   }
 }
 
@@ -101,5 +69,132 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-mono);
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+@layer components {
+  .panel-glow {
+    box-shadow: inset 0 0 30px -10px hsl(var(--primary) / 0.05),
+                0 0 15px -5px hsl(var(--primary) / 0.1);
+  }
+
+  .coalition-glow {
+    box-shadow: 0 0 12px -4px hsl(var(--coalition-primary) / 0.4);
+  }
+
+  .regime-glow {
+    box-shadow: 0 0 12px -4px hsl(var(--regime-primary) / 0.4);
+  }
+
+  .text-coalition {
+    color: hsl(var(--coalition-primary));
+  }
+
+  .text-regime {
+    color: hsl(var(--regime-primary));
+  }
+
+  .text-success {
+    color: hsl(var(--success-foreground));
+  }
+
+  .text-warning {
+    color: hsl(var(--warning));
+  }
+
+  .text-danger {
+    color: hsl(var(--danger));
+  }
+
+  .bg-coalition {
+    background-color: hsl(var(--coalition-primary));
+  }
+
+  .bg-regime {
+    background-color: hsl(var(--regime-primary));
+  }
+
+  .scanline {
+    position: relative;
+  }
+
+  .scanline::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(var(--foreground) / var(--scanline-opacity)) 2px,
+      hsl(var(--foreground) / var(--scanline-opacity)) 4px
+    );
+    pointer-events: none;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .upgrade-btn {
+    @apply px-3 py-1.5 text-xs border rounded-sm transition-all duration-200;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+  }
+
+  .upgrade-btn-coalition {
+    @apply upgrade-btn;
+    border-color: hsl(var(--coalition-primary) / 0.4);
+    color: hsl(var(--coalition-primary));
+    background: hsl(var(--coalition-primary) / 0.05);
+  }
+
+  .upgrade-btn-coalition:hover:not(:disabled) {
+    background: hsl(var(--coalition-primary) / 0.15);
+    box-shadow: 0 0 10px -3px hsl(var(--coalition-primary) / 0.3);
+  }
+
+  .upgrade-btn-regime {
+    @apply upgrade-btn;
+    border-color: hsl(var(--regime-primary) / 0.4);
+    color: hsl(var(--regime-primary));
+    background: hsl(var(--regime-primary) / 0.05);
+  }
+
+  .upgrade-btn-regime:hover:not(:disabled) {
+    background: hsl(var(--regime-primary) / 0.15);
+    box-shadow: 0 0 10px -3px hsl(var(--regime-primary) / 0.3);
+  }
+
+  .upgrade-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
 }
