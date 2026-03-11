@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, PlayerRole } from '../game/types';
 import { createInitialState, gameTick, purchaseUpgrade, canAffordUpgrade } from '../game/engine';
 import { UPGRADES, getUpgradeCost } from '../game/upgrades';
+import Battlefield, { BattlefieldHandle } from './Battlefield';
 
 // ─── Stat Display ───
 const Stat: React.FC<{ label: string; value: string | number; color?: string }> = ({ label, value, color }) => (
