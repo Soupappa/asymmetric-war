@@ -85,6 +85,7 @@ const CombatFeed: React.FC<{ logs: GameState['combatLog'] }> = ({ logs }) => (
 export default function GameDashboard() {
   const [state, setState] = useState<GameState>(createInitialState);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const battlefieldRef = useRef<BattlefieldHandle>(null);
 
   const toggleRunning = useCallback(() => {
     setState(s => ({ ...s, running: !s.running }));
