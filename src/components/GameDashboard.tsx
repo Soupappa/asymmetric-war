@@ -208,9 +208,9 @@ export default function GameDashboard() {
       )}
 
       {/* Main grid */}
-      <div className="grid grid-cols-[1fr_280px_1fr] gap-3 p-3 max-w-[1600px] mx-auto">
+      <div className="grid grid-cols-[1fr_2fr_1fr] gap-3 p-3 max-w-[1800px] mx-auto" style={{ height: 'calc(100vh - 56px)' }}>
         {/* COALITION SIDE */}
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto pr-1">
           <Panel title="COALITION STATUS" side="coalition">
             <div className="grid grid-cols-3 gap-4 mb-4">
               <Stat label="Hand Free" value={state.coalition.hand_free} color="text-coalition" />
@@ -230,9 +230,43 @@ export default function GameDashboard() {
             </div>
           </Panel>
 
+          {/* Coalition Fire Controls */}
+          {canPlayCoalition && (
+            <Panel title="FIRE CONTROL" side="coalition">
+              <div className="space-y-2">
+                <button
+                  onClick={() => battlefieldRef.current?.launchStrike(1)}
+                  className="w-full upgrade-btn-coalition text-center font-display tracking-wider"
+                >
+                  ⚡ STRIKE ×1
+                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => battlefieldRef.current?.launchStrike(5)}
+                    className="flex-1 upgrade-btn-coalition text-center"
+                  >
+                    ×5
+                  </button>
+                  <button
+                    onClick={() => battlefieldRef.current?.launchStrike(10)}
+                    className="flex-1 upgrade-btn-coalition text-center"
+                  >
+                    ×10
+                  </button>
+                  <button
+                    onClick={() => battlefieldRef.current?.launchStrike(25)}
+                    className="flex-1 upgrade-btn-coalition text-center"
+                  >
+                    ×25
+                  </button>
+                </div>
+              </div>
+            </Panel>
+          )}
+
           {canPlayCoalition && (
             <Panel title="COALITION UPGRADES" side="coalition">
-              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                 {coalitionCategories.map(cat => (
                   <div key={cat}>
                     <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">{cat}</div>
@@ -248,60 +282,44 @@ export default function GameDashboard() {
           )}
         </div>
 
-        {/* CENTER - Battlefield */}
-        <div className="space-y-3">
-          <Panel title="BATTLEFIELD" className="text-center">
-            <div className="space-y-3">
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Incoming</div>
-              <div className="grid grid-cols-2 gap-2">
-                <Stat label="Drones/s" value={state.regime.drones_per_sec.toFixed(1)} color="text-regime" />
-                <Stat label="Missiles/s" value={state.regime.missiles_per_sec.toFixed(1)} color="text-regime" />
-              </div>
-              <div className="border-t border-border my-2" />
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Last Tick Impacts</div>
-              {state.combatLog[0] && (
-                <div className="grid grid-cols-2 gap-2">
-                  <Stat label="Drone Hits" value={state.combatLog[0].drone_impacts} color={state.combatLog[0].drone_impacts > 0 ? 'text-danger' : 'text-success'} />
-                  <Stat label="Missile Hits" value={state.combatLog[0].missile_impacts} color={state.combatLog[0].missile_impacts > 0 ? 'text-danger' : 'text-success'} />
+        {/* CENTER - Battlefield Canvas */}
+        <div className="flex flex-col gap-3 min-h-0">
+          <Panel title="BATTLEFIELD" className="flex-1 min-h-0">
+            <div className="h-full" style={{ minHeight: 350 }}>
+              <Battlefield ref={battlefieldRef} state={state} />
+            </div>
+          </Panel>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Panel title="SITUATION">
+              <div className="space-y-2 text-[10px]">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Phase</span>
+                  <span className={`uppercase font-display tracking-wider ${
+                    state.phase === 'early' ? 'text-success' : state.phase === 'mid' ? 'text-warning' : 'text-danger'
+                  }`}>{state.phase}</span>
                 </div>
-              )}
-              <div className="border-t border-border my-2" />
-              <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Doctrine Bias</div>
-              <div className="grid grid-cols-2 gap-2">
-                <Stat label="Drone Bias" value={state.regime.drone_bias.toFixed(2)} />
-                <Stat label="Missile Bias" value={state.regime.missile_bias.toFixed(2)} />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Doctrine</span>
+                  <span>{state.regime.drone_bias > state.regime.missile_bias ? 'DRONE SWARM' : 'MISSILE HEAVY'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Econ Balance</span>
+                  <span className={state.coalition.war_cost_per_sec > state.coalition.hand_free ? 'text-danger' : 'text-success'}>
+                    {state.coalition.war_cost_per_sec > state.coalition.hand_free ? 'DEFICIT' : 'STABLE'}
+                  </span>
+                </div>
               </div>
-            </div>
-          </Panel>
+            </Panel>
 
-          <Panel title="COMBAT LOG">
-            <CombatFeed logs={state.combatLog} />
-          </Panel>
-
-          <Panel title="SITUATION">
-            <div className="space-y-2 text-[10px]">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Phase</span>
-                <span className={`uppercase font-display tracking-wider ${
-                  state.phase === 'early' ? 'text-success-foreground' : state.phase === 'mid' ? 'text-warning' : 'text-danger'
-                }`}>{state.phase}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mine Pressure</span>
-                <span>{state.regime.mine_count > 0 ? `-${(state.regime.mine_count * 3)}% economy` : 'None'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Econ Balance</span>
-                <span className={state.coalition.war_cost_per_sec > state.coalition.hand_free ? 'text-danger' : 'text-success-foreground'}>
-                  {state.coalition.war_cost_per_sec > state.coalition.hand_free ? 'DEFICIT' : 'STABLE'}
-                </span>
-              </div>
-            </div>
-          </Panel>
+            <Panel title="COMBAT LOG">
+              <CombatFeed logs={state.combatLog} />
+            </Panel>
+          </div>
         </div>
 
         {/* REGIME SIDE */}
-        <div className="space-y-3">
+        <div className="space-y-3 overflow-y-auto pl-1">
           <Panel title="REGIME STATUS" side="regime">
             <div className="grid grid-cols-3 gap-4 mb-4">
               <Stat label="Resilience" value={state.regime.resilience} color="text-regime" />
@@ -316,14 +334,45 @@ export default function GameDashboard() {
               <Stat label="Total Drones" value={Math.round(state.regime.total_drones_launched)} />
               <Stat label="Total Missiles" value={Math.round(state.regime.total_missiles_launched)} />
             </div>
-            <div className="mt-4">
-              <div className="text-[10px] text-muted-foreground">Next base cost: {Math.round(250 + state.regime.bases * 90).toLocaleString()}</div>
-            </div>
           </Panel>
+
+          {/* Regime Fire Controls */}
+          {canPlayRegime && (
+            <Panel title="LAUNCH CONTROL" side="regime">
+              <div className="space-y-2">
+                <button
+                  onClick={() => battlefieldRef.current?.launchDrones(10)}
+                  className="w-full upgrade-btn-regime text-center font-display tracking-wider"
+                >
+                  🛩 DRONE WAVE ×10
+                </button>
+                <button
+                  onClick={() => battlefieldRef.current?.launchMissiles(5)}
+                  className="w-full upgrade-btn-regime text-center font-display tracking-wider"
+                >
+                  🚀 MISSILE SALVO ×5
+                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => battlefieldRef.current?.launchDrones(50)}
+                    className="flex-1 upgrade-btn-regime text-center text-[10px]"
+                  >
+                    50 DRONES
+                  </button>
+                  <button
+                    onClick={() => battlefieldRef.current?.launchMissiles(20)}
+                    className="flex-1 upgrade-btn-regime text-center text-[10px]"
+                  >
+                    20 MISSILES
+                  </button>
+                </div>
+              </div>
+            </Panel>
+          )}
 
           {canPlayRegime && (
             <Panel title="REGIME UPGRADES" side="regime">
-              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                 {regimeCategories.map(cat => (
                   <div key={cat}>
                     <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">{cat}</div>
