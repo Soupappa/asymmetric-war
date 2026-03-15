@@ -238,6 +238,13 @@ export default function GameDashboard() {
           {canPlayCoalition && (
             <Panel title="ACTIONS" side="coalition">
               <div className="space-y-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Auto-Fire</span>
+                  <button onClick={() => setState(s => ({ ...s, autoFireCoalition: !s.autoFireCoalition }))}
+                    className={`px-2 py-0.5 text-[9px] rounded-sm border transition-colors ${
+                      state.autoFireCoalition ? 'border-coalition bg-coalition/20 text-coalition' : 'border-border text-muted-foreground'
+                    }`}>{state.autoFireCoalition ? 'AUTO ON' : 'AUTO OFF'}</button>
+                </div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1">Defense</div>
                 <button onClick={handleBuyAA} disabled={state.coalition.budget < state.coalition.aa_cost}
                   className="w-full upgrade-btn-coalition text-center">
@@ -350,6 +357,13 @@ export default function GameDashboard() {
           {canPlayRegime && (
             <Panel title="ACTIONS" side="regime">
               <div className="space-y-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Auto-Fire</span>
+                  <button onClick={() => setState(s => ({ ...s, autoFireRegime: !s.autoFireRegime }))}
+                    className={`px-2 py-0.5 text-[9px] rounded-sm border transition-colors ${
+                      state.autoFireRegime ? 'border-regime bg-regime/20 text-regime' : 'border-border text-muted-foreground'
+                    }`}>{state.autoFireRegime ? 'AUTO ON' : 'AUTO OFF'}</button>
+                </div>
                 <button onClick={handleBuildBase} disabled={state.regime.budget < baseCostDisplay}
                   className="w-full upgrade-btn-regime text-center">
                   🏗 Build Base — ◆{baseCostDisplay}

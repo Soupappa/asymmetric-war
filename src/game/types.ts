@@ -89,4 +89,6 @@ export interface GameState {
   gameOver: boolean;
   winner: 'coalition' | 'regime' | null;
   winReason: string;
+  autoFireRegime: boolean;
+  autoFireCoalition: boolean;
 }
