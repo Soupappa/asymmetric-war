@@ -216,21 +216,22 @@ const Battlefield = forwardRef<BattlefieldHandle, BattlefieldProps>(({ state }, 
     },
   }), [spawnProjectile]);
 
-  // Auto-launch
+  // Auto-launch (only when enabled)
   useEffect(() => {
     if (!state.running) return;
     const interval = setInterval(() => {
-      const dronesToLaunch = Math.ceil(state.regime.drones_per_sec / 5);
-      const missilesToLaunch = Math.ceil(state.regime.missiles_per_sec / 8);
-      for (let i = 0; i < Math.min(dronesToLaunch, 20); i++) spawnProjectile('drone');
-      for (let i = 0; i < Math.min(missilesToLaunch, 8); i++) spawnProjectile('missile');
-      // Auto strikes based on strike power
-      if (state.coalition.strike_power > 0) {
+      if (state.autoFireRegime) {
+        const dronesToLaunch = Math.ceil(state.regime.drones_per_sec / 5);
+        const missilesToLaunch = Math.ceil(state.regime.missiles_per_sec / 8);
+        for (let i = 0; i < Math.min(dronesToLaunch, 20); i++) spawnProjectile('drone');
+        for (let i = 0; i < Math.min(missilesToLaunch, 8); i++) spawnProjectile('missile');
+      }
+      if (state.autoFireCoalition && state.coalition.strike_power > 0) {
         for (let i = 0; i < Math.min(Math.ceil(state.coalition.strike_power / 5), 3); i++) spawnProjectile('strike');
       }
     }, 200);
     return () => clearInterval(interval);
-  }, [state.running, state.regime.drones_per_sec, state.regime.missiles_per_sec, state.coalition.strike_power, spawnProjectile]);
+  }, [state.running, state.autoFireRegime, state.autoFireCoalition, state.regime.drones_per_sec, state.regime.missiles_per_sec, state.coalition.strike_power, spawnProjectile]);
 
   // Animation loop
   useEffect(() => {
