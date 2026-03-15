@@ -52,6 +52,8 @@ export function createInitialState(): GameState {
     gameOver: false,
     winner: null,
     winReason: '',
+    autoFireRegime: false,
+    autoFireCoalition: false,
   };
 }
 
