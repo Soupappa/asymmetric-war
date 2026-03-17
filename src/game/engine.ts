@@ -92,10 +92,10 @@ function processStockProduction(state: GameState) {
       r.droneStock.producing = false;
     }
   }
-  // Auto-buy drones
+  // Auto-buy drones (only when autoBuy is ON)
   const fervorDiscount = Math.max(0.3, 1 - r.fervor * 0.005);
   const effectiveDroneCost = r.droneCost * fervorDiscount;
-  if ((r.droneStock.autoBuy || !r.droneStock.producing) && r.money >= effectiveDroneCost && !r.droneStock.producing) {
+  if (r.droneStock.autoBuy && !r.droneStock.producing && r.money >= effectiveDroneCost) {
     r.money -= effectiveDroneCost;
     r.droneStock.producing = true;
     r.droneStock.productionProgress = 0;
@@ -113,7 +113,7 @@ function processStockProduction(state: GameState) {
     }
   }
   const effectiveMissileCost = r.missileCost * fervorDiscount;
-  if ((r.missileStock.autoBuy || !r.missileStock.producing) && r.money >= effectiveMissileCost && !r.missileStock.producing) {
+  if (r.missileStock.autoBuy && !r.missileStock.producing && r.money >= effectiveMissileCost) {
     r.money -= effectiveMissileCost;
     r.missileStock.producing = true;
     r.missileStock.productionProgress = 0;
@@ -129,7 +129,7 @@ function processStockProduction(state: GameState) {
       c.strikeStock.producing = false;
     }
   }
-  if ((c.strikeStock.autoBuy || !c.strikeStock.producing) && c.money >= strikeCost && !c.strikeStock.producing) {
+  if (c.strikeStock.autoBuy && !c.strikeStock.producing && c.money >= strikeCost) {
     c.money -= strikeCost;
     c.debt += strikeCost;
     c.strikeStock.producing = true;
@@ -146,7 +146,7 @@ function processStockProduction(state: GameState) {
       c.fighterStock.producing = false;
     }
   }
-  if ((c.fighterStock.autoBuy || !c.fighterStock.producing) && c.money >= fighterCost && !c.fighterStock.producing) {
+  if (c.fighterStock.autoBuy && !c.fighterStock.producing && c.money >= fighterCost) {
     c.money -= fighterCost;
     c.debt += fighterCost;
     c.fighterStock.producing = true;
@@ -218,17 +218,17 @@ export function gameTick(prev: GameState): GameState {
     c.money += (state.upgrades.c_allied_aid?.level ?? 0) * 500;
   }
 
-  // Economy derivative
+  // Economy derivative — more impactful
   const debtRatio = c.debt / state.coalitionPibBase * 100;
   const toleranceBonus = (state.upgrades.c_war_economy?.level ?? 0) * 2;
   const effectiveTolerance = c.debtBreakdownTolerance + toleranceBonus;
   const gdpBonus = (state.upgrades.c_gdp_growth?.level ?? 0) * 0.3;
   
   if (debtRatio < effectiveTolerance) {
-    c.economyDerivative = 0.02 + gdpBonus;
+    c.economyDerivative = 0.1 + gdpBonus; // more visible positive recovery
   } else {
     const excess = debtRatio - effectiveTolerance;
-    c.economyDerivative = -(excess * excess) * 0.001;
+    c.economyDerivative = -(excess * excess) * 0.005; // stronger negative pressure
   }
 
   // Mine pressure on economy
