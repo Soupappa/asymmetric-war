@@ -129,7 +129,7 @@ function processStockProduction(state: GameState) {
       c.strikeStock.producing = false;
     }
   }
-  if ((c.strikeStock.autoBuy || !c.strikeStock.producing) && c.money >= strikeCost && !c.strikeStock.producing) {
+  if (c.strikeStock.autoBuy && !c.strikeStock.producing && c.money >= strikeCost) {
     c.money -= strikeCost;
     c.debt += strikeCost;
     c.strikeStock.producing = true;
