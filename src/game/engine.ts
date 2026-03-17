@@ -146,7 +146,7 @@ function processStockProduction(state: GameState) {
       c.fighterStock.producing = false;
     }
   }
-  if ((c.fighterStock.autoBuy || !c.fighterStock.producing) && c.money >= fighterCost && !c.fighterStock.producing) {
+  if (c.fighterStock.autoBuy && !c.fighterStock.producing && c.money >= fighterCost) {
     c.money -= fighterCost;
     c.debt += fighterCost;
     c.fighterStock.producing = true;

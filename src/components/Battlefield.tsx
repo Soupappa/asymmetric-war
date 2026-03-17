@@ -42,10 +42,30 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Sync units from state
+  // Stable position cache for coalition defenses
+  const coalitionPositionsRef = useRef<Map<string, { x: number; y: number; pulsePhase: number }>>(new Map());
+  const prevCountsRef = useRef({ patriots: 0, miniguns: 0, radars: 0, baseIds: '' });
+
+  // Sync units from state — only regenerate when counts actually change
   useEffect(() => {
+    const baseIds = state.regime.bases.filter(b => b.alive).map(b => b.id).join(',');
+    const counts = {
+      patriots: state.coalition.patriots,
+      miniguns: state.coalition.miniguns,
+      radars: state.coalition.radarSpots,
+      baseIds,
+    };
+    const prev = prevCountsRef.current;
+    if (
+      counts.patriots === prev.patriots &&
+      counts.miniguns === prev.miniguns &&
+      counts.radars === prev.radars &&
+      counts.baseIds === prev.baseIds
+    ) return;
+    prevCountsRef.current = counts;
+
     const units: MapUnit[] = [];
-    // Regime bases
+    // Regime bases (positions come from state)
     for (const b of state.regime.bases) {
       if (!b.alive) continue;
       units.push({
@@ -55,16 +75,27 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
         burialLevel: b.burialLevel,
       });
     }
-    // Coalition defenses
-    for (let i = 0; i < Math.min(state.coalition.patriots, 15); i++) {
-      units.push({ id: nextId++, type: 'patriot', x: 0.08 + Math.random() * 0.15, y: 0.1 + Math.random() * 0.8, alive: true, flashTimer: 0, pulsePhase: Math.random() * Math.PI * 2 });
-    }
-    for (let i = 0; i < Math.min(state.coalition.miniguns, 20); i++) {
-      units.push({ id: nextId++, type: 'minigun', x: 0.12 + Math.random() * 0.18, y: 0.1 + Math.random() * 0.8, alive: true, flashTimer: 0, pulsePhase: Math.random() * Math.PI * 2 });
-    }
-    for (let i = 0; i < Math.min(state.coalition.radarSpots, 10); i++) {
-      units.push({ id: nextId++, type: 'radar', x: 0.25 + Math.random() * 0.15, y: 0.15 + Math.random() * 0.7, alive: true, flashTimer: 0, pulsePhase: Math.random() * Math.PI * 2 });
-    }
+
+    // Coalition defenses — use cached positions, only generate new ones for added units
+    const posCache = coalitionPositionsRef.current;
+    const newCache = new Map<string, { x: number; y: number; pulsePhase: number }>();
+
+    const addCachedUnit = (type: 'patriot' | 'minigun' | 'radar', count: number, xMin: number, xRange: number, yMin: number, yRange: number) => {
+      for (let i = 0; i < Math.min(count, type === 'minigun' ? 20 : type === 'patriot' ? 15 : 10); i++) {
+        const key = `${type}_${i}`;
+        let pos = posCache.get(key);
+        if (!pos) {
+          pos = { x: xMin + Math.random() * xRange, y: yMin + Math.random() * yRange, pulsePhase: Math.random() * Math.PI * 2 };
+        }
+        newCache.set(key, pos);
+        units.push({ id: nextId++, type, x: pos.x, y: pos.y, alive: true, flashTimer: 0, pulsePhase: pos.pulsePhase });
+      }
+    };
+
+    addCachedUnit('patriot', state.coalition.patriots, 0.08, 0.15, 0.1, 0.8);
+    addCachedUnit('minigun', state.coalition.miniguns, 0.12, 0.18, 0.1, 0.8);
+    addCachedUnit('radar', state.coalition.radarSpots, 0.25, 0.15, 0.15, 0.7);
+    coalitionPositionsRef.current = newCache;
     unitsRef.current = units;
   }, [state.regime.bases, state.coalition.patriots, state.coalition.miniguns, state.coalition.radarSpots]);
 
