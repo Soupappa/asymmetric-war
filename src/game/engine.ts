@@ -92,10 +92,10 @@ function processStockProduction(state: GameState) {
       r.droneStock.producing = false;
     }
   }
-  // Auto-buy drones
+  // Auto-buy drones (only when autoBuy is ON)
   const fervorDiscount = Math.max(0.3, 1 - r.fervor * 0.005);
   const effectiveDroneCost = r.droneCost * fervorDiscount;
-  if ((r.droneStock.autoBuy || !r.droneStock.producing) && r.money >= effectiveDroneCost && !r.droneStock.producing) {
+  if (r.droneStock.autoBuy && !r.droneStock.producing && r.money >= effectiveDroneCost) {
     r.money -= effectiveDroneCost;
     r.droneStock.producing = true;
     r.droneStock.productionProgress = 0;
