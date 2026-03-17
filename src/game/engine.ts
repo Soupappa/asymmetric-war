@@ -218,17 +218,17 @@ export function gameTick(prev: GameState): GameState {
     c.money += (state.upgrades.c_allied_aid?.level ?? 0) * 500;
   }
 
-  // Economy derivative
+  // Economy derivative — more impactful
   const debtRatio = c.debt / state.coalitionPibBase * 100;
   const toleranceBonus = (state.upgrades.c_war_economy?.level ?? 0) * 2;
   const effectiveTolerance = c.debtBreakdownTolerance + toleranceBonus;
   const gdpBonus = (state.upgrades.c_gdp_growth?.level ?? 0) * 0.3;
   
   if (debtRatio < effectiveTolerance) {
-    c.economyDerivative = 0.02 + gdpBonus;
+    c.economyDerivative = 0.1 + gdpBonus; // more visible positive recovery
   } else {
     const excess = debtRatio - effectiveTolerance;
-    c.economyDerivative = -(excess * excess) * 0.001;
+    c.economyDerivative = -(excess * excess) * 0.005; // stronger negative pressure
   }
 
   // Mine pressure on economy
