@@ -113,7 +113,7 @@ function processStockProduction(state: GameState) {
     }
   }
   const effectiveMissileCost = r.missileCost * fervorDiscount;
-  if ((r.missileStock.autoBuy || !r.missileStock.producing) && r.money >= effectiveMissileCost && !r.missileStock.producing) {
+  if (r.missileStock.autoBuy && !r.missileStock.producing && r.money >= effectiveMissileCost) {
     r.money -= effectiveMissileCost;
     r.missileStock.producing = true;
     r.missileStock.productionProgress = 0;
