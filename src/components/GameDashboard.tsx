@@ -59,8 +59,6 @@ const ResearchButton: React.FC<{
   const maxed = level >= upgrade.maxLevel;
   const researching = u?.researching ?? false;
   const progress = researching ? (u.researchProgress / u.researchTarget) * 100 : 0;
-
-  // Check tier lock
   const maxTier = getMaxUnlockedTier(state.upgrades, upgrade.branch);
   const locked = upgrade.tier > maxTier;
 
@@ -86,7 +84,7 @@ const ResearchButton: React.FC<{
           {maxed ? <span className="text-muted-foreground">MAX</span>
             : researching ? <span>🔬 {u.researchTarget - u.researchProgress}t</span>
             : locked ? <span className="text-muted-foreground">T{upgrade.tier}</span>
-            : <span>{Math.round(cost).toLocaleString()} {side === 'coalition' ? '$' : '◆'}</span>}
+            : <span>{side === 'coalition' ? `+$${Math.round(cost).toLocaleString()} debt` : `◆${Math.round(cost).toLocaleString()}`}</span>}
         </div>
       </div>
     </button>
@@ -145,7 +143,7 @@ export default function GameDashboard() {
   const resetGame = useCallback(() => setState(createInitialState()), []);
   const handleResearch = useCallback((id: string) => setState(s => startResearch(s, id)), []);
 
-  // Coalition actions
+  // Coalition actions — no money checks, everything is debt
   const handleBuyPatriot = useCallback(() => { setState(s => buyPatriot(s)); }, []);
   const handleBuyMinigun = useCallback(() => { setState(s => buyMinigun(s)); }, []);
   const handleBuildRadar = useCallback(() => { setState(s => buildRadar(s)); }, []);
@@ -289,111 +287,118 @@ export default function GameDashboard() {
       {/* Main grid */}
       <div className="grid grid-cols-[280px_1fr_280px] gap-2 p-2" style={{ height: 'calc(100vh - 48px)' }}>
         {/* COALITION SIDE */}
-        <div className="space-y-2 overflow-y-auto pr-1 text-[11px]">
-          {/* Macro Bar */}
-          <Panel title="HAND FREE" side="coalition">
-            <div className="text-center mb-2">
-              <span className={`text-2xl font-display tracking-widest ${state.coalition.handFree < 20 ? 'text-danger' : state.coalition.handFree < 50 ? 'text-warning' : 'text-coalition'}`}>
-                {Math.round(state.coalition.handFree)}
-              </span>
-              <span className="text-muted-foreground text-[10px] ml-1">/ 100</span>
-            </div>
-            <Bar value={state.coalition.economy} max={100} color="bg-coalition" label="Economy" showDerivative={state.coalition.economyDerivative} />
-            <Bar value={state.coalition.publicSupport} max={100} color="bg-coalition" label="Public Support" showDerivative={state.coalition.publicSupportDerivative} />
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <Stat label="Money $" value={state.coalition.money} color="text-coalition" small />
-              <Stat label="Debt $" value={state.coalition.debt} color="text-danger" small />
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <Stat label="Income/t" value={state.coalition.incomePerTick} small />
-              <Stat label="War Cost" value={state.coalition.warCostPerSec} color="text-warning" small />
-            </div>
-          </Panel>
-
-          {canPlayCoalition && (
-            <Panel title="STOCKPILE" side="coalition">
-              <StockDisplay label="Strikes" stock={state.coalition.strikeStock.stock} producing={state.coalition.strikeStock.producing}
-                progress={state.coalition.strikeStock.productionProgress} time={state.coalition.strikeStock.productionTime} side="coalition" />
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={handleBuyStrike} disabled={state.coalition.money < 800} side="coalition" className="flex-1">Buy $800</ActionBtn>
-                <ToggleBtn active={state.coalition.strikeStock.autoBuy} onClick={() => toggleAutoBuy('coalition', 'strike')} label="Auto" side="coalition" />
+        <div className="overflow-y-auto pr-1 text-[11px]">
+          {/* Sticky Macro Bar */}
+          <div className="sticky top-0 z-10 space-y-2 pb-2">
+            <Panel title="HAND FREE" side="coalition">
+              <div className="text-center mb-2">
+                <span className={`text-2xl font-display tracking-widest ${state.coalition.handFree < 20 ? 'text-danger' : state.coalition.handFree < 50 ? 'text-warning' : 'text-coalition'}`}>
+                  {Math.round(state.coalition.handFree)}
+                </span>
+                <span className="text-muted-foreground text-[10px] ml-1">/ 100</span>
               </div>
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={() => handleLaunchStrikes(1)} disabled={state.coalition.strikeStock.stock < 1} side="coalition" className="flex-1">⚡ Fire ×1</ActionBtn>
-                <ActionBtn onClick={() => handleLaunchStrikes(5)} disabled={state.coalition.strikeStock.stock < 5} side="coalition" className="flex-1">×5</ActionBtn>
-                <ToggleBtn active={state.coalition.strikeStock.autoLaunch} onClick={() => toggleAutoLaunch('coalition', 'strike')} label="Auto" side="coalition" />
+              <Bar value={state.coalition.economy} max={100} color="bg-coalition" label="Economy" showDerivative={state.coalition.economyDerivative} />
+              <Bar value={state.coalition.publicSupport} max={100} color="bg-coalition" label="Public Support" showDerivative={state.coalition.publicSupportDerivative} />
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <Stat label="Debt $" value={state.coalition.debt} color="text-danger" small />
+                <Stat label="Cost/t" value={Math.round(state.coalition.maintenanceCost / 10)} color="text-warning" small />
               </div>
-
-              <div className="border-t border-border mt-2 pt-2" />
-              <StockDisplay label="Fighters" stock={state.coalition.fighterStock.stock} producing={state.coalition.fighterStock.producing}
-                progress={state.coalition.fighterStock.productionProgress} time={state.coalition.fighterStock.productionTime} side="coalition" />
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={handleBuyFighter} disabled={state.coalition.money < 2000} side="coalition" className="flex-1">Buy $2K</ActionBtn>
-                <ToggleBtn active={state.coalition.fighterStock.autoBuy} onClick={() => toggleAutoBuy('coalition', 'fighter')} label="Auto" side="coalition" />
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Stat label="Income/t" value={state.coalition.incomePerTick} small />
+                <Stat label="Interceptors" value={`${state.coalition.interceptorStock}/${state.coalition.interceptorMax}`} color="text-coalition" small />
               </div>
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={() => handleLaunchFighters(1)} disabled={state.coalition.fighterStock.stock < 1} side="coalition" className="flex-1">✈ Deploy ×1</ActionBtn>
-                <ActionBtn onClick={() => handleLaunchFighters(3)} disabled={state.coalition.fighterStock.stock < 3} side="coalition" className="flex-1">×3</ActionBtn>
-                <ToggleBtn active={state.coalition.fighterStock.autoLaunch} onClick={() => toggleAutoLaunch('coalition', 'fighter')} label="Auto" side="coalition" />
+              <div className="mt-1">
+                <Stat label="Fog Limit" value={`${Math.round(state.coalition.fogOfWarLimit * 100)}%`} small />
               </div>
             </Panel>
-          )}
+          </div>
 
-          {canPlayCoalition && (
-            <Panel title="CONSTRUCTION" side="coalition">
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                <Stat label="Patriots" value={state.coalition.patriots} small />
-                <Stat label="Miniguns" value={state.coalition.miniguns} small />
-                <Stat label="Radar" value={state.coalition.radarSpots} small />
-              </div>
-              <div className="space-y-1">
-                <ActionBtn onClick={handleBuyPatriot} disabled={state.coalition.money < state.coalition.patriotCost} side="coalition" className="w-full">
-                  🛡 Patriot ${state.coalition.patriotCost.toLocaleString()}
-                </ActionBtn>
-                <ActionBtn onClick={handleBuyMinigun} disabled={state.coalition.money < state.coalition.minigunCost} side="coalition" className="w-full">
-                  🔫 Minigun ${state.coalition.minigunCost}
-                </ActionBtn>
-                <ActionBtn onClick={handleBuildRadar} disabled={state.coalition.money < state.coalition.radarSpotCost} side="coalition" className="w-full">
-                  📡 Radar ${state.coalition.radarSpotCost.toLocaleString()}
-                </ActionBtn>
-              </div>
-            </Panel>
-          )}
+          <div className="space-y-2">
+            {canPlayCoalition && (
+              <Panel title="STOCKPILE" side="coalition">
+                <StockDisplay label="Strikes" stock={state.coalition.strikeStock.stock} producing={state.coalition.strikeStock.producing}
+                  progress={state.coalition.strikeStock.productionProgress} time={state.coalition.strikeStock.productionTime} side="coalition" />
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={handleBuyStrike} side="coalition" className="flex-1">Order +$800 debt</ActionBtn>
+                  <ToggleBtn active={state.coalition.strikeStock.autoBuy} onClick={() => toggleAutoBuy('coalition', 'strike')} label="Auto" side="coalition" />
+                </div>
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={() => handleLaunchStrikes(1)} disabled={state.coalition.strikeStock.stock < 1} side="coalition" className="flex-1">⚡ Fire ×1</ActionBtn>
+                  <ActionBtn onClick={() => handleLaunchStrikes(5)} disabled={state.coalition.strikeStock.stock < 5} side="coalition" className="flex-1">×5</ActionBtn>
+                  <ToggleBtn active={state.coalition.strikeStock.autoLaunch} onClick={() => toggleAutoLaunch('coalition', 'strike')} label="Auto" side="coalition" />
+                </div>
 
-          {canPlayCoalition && (
-            <Panel title="ECONOMIC & INTEL" side="coalition">
-              <div className="space-y-1">
-                <ActionBtn onClick={handleBonds} side="coalition" className="w-full">
-                  📜 Treasury Bonds — +$5K debt, +income
-                </ActionBtn>
-                <ActionBtn onClick={handleTax} side="coalition" className="w-full">
-                  💰 Public Tax — +$2K, <span className="text-danger">−5 support</span>
-                </ActionBtn>
-                <ActionBtn onClick={handleScan} disabled={!state.coalition.scanAvailable || state.coalition.scanActive} side="coalition" className="w-full">
-                  {state.coalition.scanActive ? `🔍 SCANNING... ${state.coalition.scanTimer}t` 
-                    : state.coalition.scanAvailable ? '🔍 Activate Scan' 
-                    : `🔍 Cooldown ${state.coalition.scanCooldown}t`}
-                </ActionBtn>
-              </div>
-            </Panel>
-          )}
+                <div className="border-t border-border mt-2 pt-2" />
+                <StockDisplay label="Fighters" stock={state.coalition.fighterStock.stock} producing={state.coalition.fighterStock.producing}
+                  progress={state.coalition.fighterStock.productionProgress} time={state.coalition.fighterStock.productionTime} side="coalition" />
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={handleBuyFighter} side="coalition" className="flex-1">Order +$2K debt</ActionBtn>
+                  <ToggleBtn active={state.coalition.fighterStock.autoBuy} onClick={() => toggleAutoBuy('coalition', 'fighter')} label="Auto" side="coalition" />
+                </div>
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={() => handleLaunchFighters(1)} disabled={state.coalition.fighterStock.stock < 1} side="coalition" className="flex-1">✈ Deploy ×1</ActionBtn>
+                  <ActionBtn onClick={() => handleLaunchFighters(3)} disabled={state.coalition.fighterStock.stock < 3} side="coalition" className="flex-1">×3</ActionBtn>
+                  <ToggleBtn active={state.coalition.fighterStock.autoLaunch} onClick={() => toggleAutoLaunch('coalition', 'fighter')} label="Auto" side="coalition" />
+                </div>
+              </Panel>
+            )}
 
-          {canPlayCoalition && (
-            <Panel title="DOCTRINE" side="coalition">
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                {coalitionBranches.map(branch => (
-                  <div key={branch}>
-                    <div className="text-[10px] text-coalition uppercase tracking-widest mb-1 font-display">{branch}</div>
-                    <div className="space-y-1">
-                      {coalitionUpgrades.filter(u => u.branch === branch).sort((a, b) => a.tier - b.tier).map(u => (
-                        <ResearchButton key={u.id} upgradeId={u.id} state={state} onResearch={handleResearch} side="coalition" />
-                      ))}
+            {canPlayCoalition && (
+              <Panel title="CONSTRUCTION" side="coalition">
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  <Stat label="Patriots" value={state.coalition.patriots} small />
+                  <Stat label="Miniguns" value={state.coalition.miniguns} small />
+                  <Stat label="Radar" value={state.coalition.radarSpots} small />
+                </div>
+                <div className="space-y-1">
+                  <ActionBtn onClick={handleBuyPatriot} side="coalition" className="w-full">
+                    🛡 Patriot +${state.coalition.patriotCost.toLocaleString()} debt
+                  </ActionBtn>
+                  <ActionBtn onClick={handleBuyMinigun} side="coalition" className="w-full">
+                    🔫 Minigun +${state.coalition.minigunCost} debt
+                  </ActionBtn>
+                  <ActionBtn onClick={handleBuildRadar} side="coalition" className="w-full">
+                    📡 Radar +${state.coalition.radarSpotCost.toLocaleString()} debt — extends fog
+                  </ActionBtn>
+                </div>
+              </Panel>
+            )}
+
+            {canPlayCoalition && (
+              <Panel title="ECONOMIC & INTEL" side="coalition">
+                <div className="space-y-1">
+                  <ActionBtn onClick={handleBonds} side="coalition" className="w-full">
+                    📜 Treasury Bonds — +$5K debt, +income/t
+                  </ActionBtn>
+                  <ActionBtn onClick={handleTax} side="coalition" className="w-full">
+                    💰 Public Tax — −$2K debt, <span className="text-danger">−5 support</span>
+                  </ActionBtn>
+                  <ActionBtn onClick={handleScan} disabled={!state.coalition.scanAvailable || state.coalition.scanActive} side="coalition" className="w-full">
+                    {state.coalition.scanActive ? `🔍 SCANNING... ${state.coalition.scanTimer}t` 
+                      : state.coalition.scanAvailable ? '🔍 Activate Scan' 
+                      : `🔍 Cooldown ${state.coalition.scanCooldown}t`}
+                  </ActionBtn>
+                </div>
+              </Panel>
+            )}
+
+            {canPlayCoalition && (
+              <Panel title="DOCTRINE" side="coalition">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {coalitionBranches.map(branch => (
+                    <div key={branch}>
+                      <div className="text-[10px] text-coalition uppercase tracking-widest mb-1 font-display">{branch}</div>
+                      <div className="space-y-1">
+                        {coalitionUpgrades.filter(u => u.branch === branch).sort((a, b) => a.tier - b.tier).map(u => (
+                          <ResearchButton key={u.id} upgradeId={u.id} state={state} onResearch={handleResearch} side="coalition" />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          )}
+                  ))}
+                </div>
+              </Panel>
+            )}
+          </div>
         </div>
 
         {/* CENTER */}
@@ -428,6 +433,10 @@ export default function GameDashboard() {
                   <span className="text-muted-foreground">Resilience</span>
                   <span className={state.regime.resilience > 80 ? 'text-danger' : ''}>{Math.round(state.regime.resilience)}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Fog of War</span>
+                  <span>{Math.round(state.coalition.fogOfWarLimit * 100)}% visible</span>
+                </div>
               </div>
             </Panel>
             <Panel title="COMBAT LOG">
@@ -437,115 +446,119 @@ export default function GameDashboard() {
         </div>
 
         {/* REGIME SIDE */}
-        <div className="space-y-2 overflow-y-auto pl-1 text-[11px]">
-          {/* Macro Bar */}
-          <Panel title="RESILIENCE" side="regime">
-            <div className="text-center mb-2">
-              <span className={`text-2xl font-display tracking-widest ${state.regime.resilience > 80 ? 'text-danger animate-pulse' : state.regime.resilience > 50 ? 'text-warning' : 'text-regime'}`}>
-                {Math.round(state.regime.resilience)}
-              </span>
-              <span className="text-muted-foreground text-[10px] ml-1">/ 100</span>
-              {state.regime.nuclearUnlocked && <span className="text-danger text-[10px] ml-2">☢ {Math.round(state.regime.nuclearProgress)}%</span>}
-            </div>
-            <Bar value={state.regime.fervor} max={100} color="bg-regime" label="Fervor" />
-            <Bar value={state.regime.dispersion} max={100} color="bg-regime" label="Dispersion" />
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <Stat label="Money ◆" value={state.regime.money} color="text-regime" small />
-              <Stat label="Regen/t" value={state.regime.moneyRegen.toFixed(1)} small />
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <Stat label="Bases" value={aliveBases.length} small />
-              <Stat label="Oil Lvl" value={state.regime.oilShippingLevel} small />
-            </div>
-          </Panel>
-
-          {canPlayRegime && (
-            <Panel title="STOCKPILE" side="regime">
-              <StockDisplay label="Drones" stock={state.regime.droneStock.stock} producing={state.regime.droneStock.producing}
-                progress={state.regime.droneStock.productionProgress} time={state.regime.droneStock.productionTime} side="regime" />
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={() => handleBuyDrones(5)} disabled={state.regime.money < effectiveDroneCost * 5} side="regime" className="flex-1">
-                  Buy ×5 ◆{effectiveDroneCost * 5}
-                </ActionBtn>
-                <ActionBtn onClick={() => handleBuyDrones(20)} disabled={state.regime.money < effectiveDroneCost * 20} side="regime" className="flex-1">×20</ActionBtn>
-                <ToggleBtn active={state.regime.droneStock.autoBuy} onClick={() => toggleAutoBuy('regime', 'drone')} label="Auto" side="regime" />
+        <div className="overflow-y-auto pl-1 text-[11px]">
+          {/* Sticky Macro Bar */}
+          <div className="sticky top-0 z-10 space-y-2 pb-2">
+            <Panel title="RESILIENCE" side="regime">
+              <div className="text-center mb-2">
+                <span className={`text-2xl font-display tracking-widest ${state.regime.resilience > 80 ? 'text-danger animate-pulse' : state.regime.resilience > 50 ? 'text-warning' : 'text-regime'}`}>
+                  {Math.round(state.regime.resilience)}
+                </span>
+                <span className="text-muted-foreground text-[10px] ml-1">/ 100</span>
+                {state.regime.nuclearUnlocked && <span className="text-danger text-[10px] ml-2">☢ {Math.round(state.regime.nuclearProgress)}%</span>}
               </div>
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={() => handleLaunchDrones(5)} disabled={state.regime.droneStock.stock < 5} side="regime" className="flex-1">
-                  🛩 Fire ×5
-                </ActionBtn>
-                <ActionBtn onClick={() => handleLaunchDrones(20)} disabled={state.regime.droneStock.stock < 20} side="regime" className="flex-1">×20</ActionBtn>
-                <ToggleBtn active={state.regime.droneStock.autoLaunch} onClick={() => toggleAutoLaunch('regime', 'drone')} label="Auto" side="regime" />
+              <Bar value={state.regime.fervor} max={100} color="bg-regime" label="Fervor" />
+              <Bar value={state.regime.dispersion} max={100} color="bg-regime" label="Dispersion" />
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <Stat label="Money ◆" value={state.regime.money} color="text-regime" small />
+                <Stat label="Regen/t" value={state.regime.moneyRegen.toFixed(1)} small />
               </div>
-
-              <div className="border-t border-border mt-2 pt-2" />
-              <StockDisplay label="Missiles" stock={state.regime.missileStock.stock} producing={state.regime.missileStock.producing}
-                progress={state.regime.missileStock.productionProgress} time={state.regime.missileStock.productionTime} side="regime" />
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={() => handleBuyMissiles(3)} disabled={state.regime.money < effectiveMissileCost * 3} side="regime" className="flex-1">
-                  Buy ×3 ◆{effectiveMissileCost * 3}
-                </ActionBtn>
-                <ActionBtn onClick={() => handleBuyMissiles(10)} disabled={state.regime.money < effectiveMissileCost * 10} side="regime" className="flex-1">×10</ActionBtn>
-                <ToggleBtn active={state.regime.missileStock.autoBuy} onClick={() => toggleAutoBuy('regime', 'missile')} label="Auto" side="regime" />
-              </div>
-              <div className="flex gap-1 mt-1">
-                <ActionBtn onClick={() => handleLaunchMissiles(2)} disabled={state.regime.missileStock.stock < 2} side="regime" className="flex-1">
-                  🚀 Fire ×2
-                </ActionBtn>
-                <ActionBtn onClick={() => handleLaunchMissiles(10)} disabled={state.regime.missileStock.stock < 10} side="regime" className="flex-1">×10</ActionBtn>
-                <ToggleBtn active={state.regime.missileStock.autoLaunch} onClick={() => toggleAutoLaunch('regime', 'missile')} label="Auto" side="regime" />
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Stat label="Bases" value={aliveBases.length} small />
+                <Stat label="Oil Lvl" value={state.regime.oilShippingLevel} small />
               </div>
             </Panel>
-          )}
+          </div>
 
-          {canPlayRegime && (
-            <Panel title="CONSTRUCTION" side="regime">
-              <div className="space-y-1">
-                <ActionBtn onClick={() => handleBuildBase('military')} disabled={state.regime.money < state.regime.baseCost} side="regime" className="w-full">
-                  🏗 Military Base ◆{state.regime.baseCost}
-                </ActionBtn>
-                <ActionBtn onClick={() => handleBuildBase('civilian')} disabled={state.regime.money < state.regime.baseCost * 0.6} side="regime" className="w-full">
-                  🏘 Civilian Base ◆{Math.round(state.regime.baseCost * 0.6)}
-                </ActionBtn>
-                <ActionBtn onClick={() => handleBuildBase('fake')} disabled={state.regime.money < state.regime.baseCost * 0.3} side="regime" className="w-full">
-                  🎭 Fake Base ◆{Math.round(state.regime.baseCost * 0.3)}
-                </ActionBtn>
-              </div>
-            </Panel>
-          )}
+          <div className="space-y-2">
+            {canPlayRegime && (
+              <Panel title="STOCKPILE" side="regime">
+                <StockDisplay label="Drones" stock={state.regime.droneStock.stock} producing={state.regime.droneStock.producing}
+                  progress={state.regime.droneStock.productionProgress} time={state.regime.droneStock.productionTime} side="regime" />
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={() => handleBuyDrones(5)} disabled={state.regime.money < effectiveDroneCost * 5} side="regime" className="flex-1">
+                    Buy ×5 ◆{effectiveDroneCost * 5}
+                  </ActionBtn>
+                  <ActionBtn onClick={() => handleBuyDrones(20)} disabled={state.regime.money < effectiveDroneCost * 20} side="regime" className="flex-1">×20</ActionBtn>
+                  <ToggleBtn active={state.regime.droneStock.autoBuy} onClick={() => toggleAutoBuy('regime', 'drone')} label="Auto" side="regime" />
+                </div>
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={() => handleLaunchDrones(5)} disabled={state.regime.droneStock.stock < 5} side="regime" className="flex-1">
+                    🛩 Fire ×5
+                  </ActionBtn>
+                  <ActionBtn onClick={() => handleLaunchDrones(20)} disabled={state.regime.droneStock.stock < 20} side="regime" className="flex-1">×20</ActionBtn>
+                  <ToggleBtn active={state.regime.droneStock.autoLaunch} onClick={() => toggleAutoLaunch('regime', 'drone')} label="Auto" side="regime" />
+                </div>
 
-          {canPlayRegime && (
-            <Panel title="SPECIAL OPS" side="regime">
-              <div className="space-y-1">
-                <ActionBtn onClick={handleOilShipping} disabled={state.regime.money < 20 + state.regime.oilShippingLevel * 10} side="regime" className="w-full">
-                  🛢 Oil Shipping ◆{20 + state.regime.oilShippingLevel * 10}
-                </ActionBtn>
-                <ActionBtn onClick={handleKamikazeMine} disabled={state.regime.money < state.regime.kamikazeMineCost} side="regime" className="w-full">
-                  💣 Kamikaze Mine ◆{state.regime.kamikazeMineCost} <span className="text-warning">−fervor</span>
-                </ActionBtn>
-                <ActionBtn onClick={handleRadarLockdown} disabled={!state.regime.radarLockdownAvailable} side="regime" className="w-full">
-                  {state.regime.radarLockdownAvailable ? '📡 Radar Lockdown' : `📡 Cooldown ${state.regime.radarLockdownCooldown}t`}
-                </ActionBtn>
-              </div>
-            </Panel>
-          )}
+                <div className="border-t border-border mt-2 pt-2" />
+                <StockDisplay label="Missiles" stock={state.regime.missileStock.stock} producing={state.regime.missileStock.producing}
+                  progress={state.regime.missileStock.productionProgress} time={state.regime.missileStock.productionTime} side="regime" />
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={() => handleBuyMissiles(3)} disabled={state.regime.money < effectiveMissileCost * 3} side="regime" className="flex-1">
+                    Buy ×3 ◆{effectiveMissileCost * 3}
+                  </ActionBtn>
+                  <ActionBtn onClick={() => handleBuyMissiles(10)} disabled={state.regime.money < effectiveMissileCost * 10} side="regime" className="flex-1">×10</ActionBtn>
+                  <ToggleBtn active={state.regime.missileStock.autoBuy} onClick={() => toggleAutoBuy('regime', 'missile')} label="Auto" side="regime" />
+                </div>
+                <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={() => handleLaunchMissiles(2)} disabled={state.regime.missileStock.stock < 2} side="regime" className="flex-1">
+                    🚀 Fire ×2
+                  </ActionBtn>
+                  <ActionBtn onClick={() => handleLaunchMissiles(10)} disabled={state.regime.missileStock.stock < 10} side="regime" className="flex-1">×10</ActionBtn>
+                  <ToggleBtn active={state.regime.missileStock.autoLaunch} onClick={() => toggleAutoLaunch('regime', 'missile')} label="Auto" side="regime" />
+                </div>
+              </Panel>
+            )}
 
-          {canPlayRegime && (
-            <Panel title="DOCTRINE" side="regime">
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                {regimeBranches.map(branch => (
-                  <div key={branch}>
-                    <div className="text-[10px] text-regime uppercase tracking-widest mb-1 font-display">{branch}</div>
-                    <div className="space-y-1">
-                      {regimeUpgrades.filter(u => u.branch === branch).sort((a, b) => a.tier - b.tier).map(u => (
-                        <ResearchButton key={u.id} upgradeId={u.id} state={state} onResearch={handleResearch} side="regime" />
-                      ))}
+            {canPlayRegime && (
+              <Panel title="CONSTRUCTION" side="regime">
+                <div className="space-y-1">
+                  <ActionBtn onClick={() => handleBuildBase('military')} disabled={state.regime.money < state.regime.baseCost} side="regime" className="w-full">
+                    🏗 Military Base ◆{state.regime.baseCost}
+                  </ActionBtn>
+                  <ActionBtn onClick={() => handleBuildBase('civilian')} disabled={state.regime.money < state.regime.baseCost * 0.6} side="regime" className="w-full">
+                    🏘 Civilian Base ◆{Math.round(state.regime.baseCost * 0.6)}
+                  </ActionBtn>
+                  <ActionBtn onClick={() => handleBuildBase('fake')} disabled={state.regime.money < state.regime.baseCost * 0.3} side="regime" className="w-full">
+                    🎭 Fake Base ◆{Math.round(state.regime.baseCost * 0.3)}
+                  </ActionBtn>
+                </div>
+              </Panel>
+            )}
+
+            {canPlayRegime && (
+              <Panel title="SPECIAL OPS" side="regime">
+                <div className="space-y-1">
+                  <ActionBtn onClick={handleOilShipping} disabled={state.regime.money < 20 + state.regime.oilShippingLevel * 10} side="regime" className="w-full">
+                    🛢 Oil Shipping ◆{20 + state.regime.oilShippingLevel * 10}
+                  </ActionBtn>
+                  <ActionBtn onClick={handleKamikazeMine} disabled={state.regime.money < state.regime.kamikazeMineCost} side="regime" className="w-full">
+                    💣 Kamikaze Mine ◆{state.regime.kamikazeMineCost} <span className="text-warning">−fervor</span>
+                  </ActionBtn>
+                  <ActionBtn onClick={handleRadarLockdown} disabled={!state.regime.radarLockdownAvailable} side="regime" className="w-full">
+                    {state.regime.radarLockdownAvailable ? '📡 Radar Lockdown' : `📡 Cooldown ${state.regime.radarLockdownCooldown}t`}
+                  </ActionBtn>
+                </div>
+              </Panel>
+            )}
+
+            {canPlayRegime && (
+              <Panel title="DOCTRINE" side="regime">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {regimeBranches.map(branch => (
+                    <div key={branch}>
+                      <div className="text-[10px] text-regime uppercase tracking-widest mb-1 font-display">{branch}</div>
+                      <div className="space-y-1">
+                        {regimeUpgrades.filter(u => u.branch === branch).sort((a, b) => a.tier - b.tier).map(u => (
+                          <ResearchButton key={u.id} upgradeId={u.id} state={state} onResearch={handleResearch} side="regime" />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          )}
+                  ))}
+                </div>
+              </Panel>
+            )}
+          </div>
         </div>
       </div>
     </div>
