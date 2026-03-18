@@ -1,7 +1,7 @@
 import { GameState, CombatLog, GamePhase, RegimeBase } from './types';
 import { UPGRADES, getUpgradeCost } from './upgrades';
 
-const COALITION_PIB_BASE = 500000; // massive economy
+const COALITION_PIB_BASE = 500000;
 
 let baseIdCounter = 0;
 function genBaseId(): string { return `base_${baseIdCounter++}`; }
@@ -38,14 +38,16 @@ export function createInitialState(): GameState {
       droneBias: 1, missileBias: 1,
     },
     coalition: {
-      debt: 0, money: 5000, incomePerTick: 0, debtBreakdownTolerance: 10,
+      debt: 0, incomePerTick: 0, debtBreakdownTolerance: 10,
       economy: 100, economyDerivative: 0, publicSupport: 100, publicSupportDerivative: 0, handFree: 100,
-      strikeStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 5, autoBuy: false, autoLaunch: false },
-      fighterStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 10, autoBuy: false, autoLaunch: false },
+      strikeStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 3, autoBuy: false, autoLaunch: false },
+      fighterStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 6, autoBuy: false, autoLaunch: false },
+      interceptorStock: 6, interceptorMax: 6, interceptorRechargeTimer: 0, interceptorRechargeTime: 3,
       patriots: 2, patriotCost: 3000, miniguns: 3, minigunCost: 400, radarSpots: 1, radarSpotCost: 1500,
+      fogOfWarLimit: 0.48, // just past frontline
       scanAvailable: true, scanCooldown: 0, scanActive: false, scanTimer: 0, scanZoneX: 0.7, scanZoneY: 0.5,
       totalStrikes: 0, successfulStrikes: 0, strikePower: 1, strikeAccuracy: 0.5, intelligenceModifier: 1,
-      laserDefense: 0, warCostPerSec: 0, recentStrikeTimestamps: [],
+      laserDefense: 0, maintenanceCost: 50, recentStrikeTimestamps: [],
     },
     upgrades, combatLog: [], gameOver: false, winner: null, winReason: '',
     autoFireRegime: false, autoFireCoalition: false,
@@ -69,7 +71,6 @@ function processResearch(state: GameState) {
         u.level += 1;
         u.researching = false;
         u.researchProgress = 0;
-        // Apply immediate effects
         const def = UPGRADES.find(up => up.id === id);
         if (def) def.effect(state, u.level);
       }
@@ -92,7 +93,6 @@ function processStockProduction(state: GameState) {
       r.droneStock.producing = false;
     }
   }
-  // Auto-buy drones (only when autoBuy is ON)
   const fervorDiscount = Math.max(0.3, 1 - r.fervor * 0.005);
   const effectiveDroneCost = r.droneCost * fervorDiscount;
   if (r.droneStock.autoBuy && !r.droneStock.producing && r.money >= effectiveDroneCost) {
@@ -119,8 +119,7 @@ function processStockProduction(state: GameState) {
     r.missileStock.productionProgress = 0;
   }
 
-  // Coalition strike production
-  const strikeCost = 800;
+  // Coalition strike production — FAST (productionTime defaults to 3)
   if (c.strikeStock.producing) {
     c.strikeStock.productionProgress += 1;
     if (c.strikeStock.productionProgress >= c.strikeStock.productionTime) {
@@ -129,15 +128,14 @@ function processStockProduction(state: GameState) {
       c.strikeStock.producing = false;
     }
   }
-  if (c.strikeStock.autoBuy && !c.strikeStock.producing && c.money >= strikeCost) {
-    c.money -= strikeCost;
-    c.debt += strikeCost;
+  // Auto-buy: coalition has no money limit, just adds debt
+  if (c.strikeStock.autoBuy && !c.strikeStock.producing) {
+    c.debt += 800;
     c.strikeStock.producing = true;
     c.strikeStock.productionProgress = 0;
   }
 
   // Coalition fighter production
-  const fighterCost = 2000;
   if (c.fighterStock.producing) {
     c.fighterStock.productionProgress += 1;
     if (c.fighterStock.productionProgress >= c.fighterStock.productionTime) {
@@ -146,11 +144,20 @@ function processStockProduction(state: GameState) {
       c.fighterStock.producing = false;
     }
   }
-  if (c.fighterStock.autoBuy && !c.fighterStock.producing && c.money >= fighterCost) {
-    c.money -= fighterCost;
-    c.debt += fighterCost;
+  if (c.fighterStock.autoBuy && !c.fighterStock.producing) {
+    c.debt += 2000;
     c.fighterStock.producing = true;
     c.fighterStock.productionProgress = 0;
+  }
+
+  // Coalition interceptor auto-recharge
+  c.interceptorMax = c.patriots * 3;
+  if (c.interceptorStock < c.interceptorMax) {
+    c.interceptorRechargeTimer += 1;
+    if (c.interceptorRechargeTimer >= c.interceptorRechargeTime) {
+      c.interceptorStock = Math.min(c.interceptorMax, c.interceptorStock + 1);
+      c.interceptorRechargeTimer = 0;
+    }
   }
 }
 
@@ -173,75 +180,70 @@ export function gameTick(prev: GameState): GameState {
 
   // === REGIME ECONOMY ===
   const aliveBases = r.bases.filter(b => b.alive);
-  const militaryBases = aliveBases.filter(b => b.type === 'military');
-  
-  // Money regen: base regen + oil shipping
   const oilRefBonus = 1 + (state.upgrades.r_oil_refinery?.level ?? 0) * 0.15;
   const smugglingReduction = 1 - (state.upgrades.r_smuggling?.level ?? 0) * 0.08;
   const oilDiminishing = Math.max(0.2, 1 - r.oilShippingLevel * 0.1 * smugglingReduction);
   r.moneyRegen = 2 + r.oilShippingLevel * 3 * oilDiminishing * oilRefBonus + aliveBases.length * 0.3;
   r.money += r.moneyRegen;
 
-  // Dispersion: based on bases + burial
   const totalBurial = aliveBases.reduce((s, b) => s + b.burialLevel, 0);
   r.dispersion = Math.min(100, 15 + aliveBases.length * 2.5 + totalBurial * 3);
 
-  // Fervor: propaganda + hit events (applied in combat below)
   const propagandaBonus = (state.upgrades.r_propaganda?.level ?? 0) * 0.15;
   const cultReduction = 1 - (state.upgrades.r_cult_personality?.level ?? 0) * 0.12;
   r.fervor = Math.min(100, Math.max(0, r.fervor + propagandaBonus));
-  // Natural fervor decay
   r.fervor = Math.max(0, r.fervor - 0.05 * cultReduction);
-
-  // Resilience = fervor * dispersion / 100
   r.resilience = (r.fervor / 100) * (r.dispersion / 100) * 100;
 
-  // Volunteer army: free drones from high fervor
   if ((state.upgrades.r_volunteer_army?.level ?? 0) > 0 && r.fervor > 60) {
     const freeRate = (state.upgrades.r_volunteer_army?.level ?? 0) * 0.1;
     if (Math.random() < freeRate) r.droneStock.stock += 1;
   }
 
-  // Radar lockdown cooldown
   if (r.radarLockdownCooldown > 0) {
     r.radarLockdownCooldown -= 1;
     if (r.radarLockdownCooldown <= 0) r.radarLockdownAvailable = true;
   }
 
-  // === COALITION ECONOMY ===
-  // Income from bonds
-  const bondBonus = 1 + (state.upgrades.c_war_bonds_upgrade?.level ?? 0) * 0.2;
-  c.money += c.incomePerTick * bondBonus;
+  // === COALITION ECONOMY (debt-only) ===
+  // Constant maintenance cost every tick — even idle
+  c.maintenanceCost = 50 + c.patriots * 50 + c.miniguns * 10 + c.radarSpots * 20;
+  c.debt += c.maintenanceCost / 10;
 
-  // Allied aid
+  // Income from bonds reduces debt
+  const bondBonus = 1 + (state.upgrades.c_war_bonds_upgrade?.level ?? 0) * 0.2;
+  const income = c.incomePerTick * bondBonus;
+  c.debt = Math.max(0, c.debt - income);
+
+  // Allied aid reduces debt
   if ((state.upgrades.c_allied_aid?.level ?? 0) > 0 && state.tick % 50 === 0) {
-    c.money += (state.upgrades.c_allied_aid?.level ?? 0) * 500;
+    c.debt = Math.max(0, c.debt - (state.upgrades.c_allied_aid?.level ?? 0) * 500);
   }
 
-  // Economy derivative — more impactful
+  // Trade routes reduce debt
+  const tradeBonus = 1 + (state.upgrades.c_trade_routes?.level ?? 0) * 0.05;
+  c.debt = Math.max(0, c.debt - 10 * tradeBonus);
+
+  // Economy derivative based on debt ratio
   const debtRatio = c.debt / state.coalitionPibBase * 100;
   const toleranceBonus = (state.upgrades.c_war_economy?.level ?? 0) * 2;
   const effectiveTolerance = c.debtBreakdownTolerance + toleranceBonus;
   const gdpBonus = (state.upgrades.c_gdp_growth?.level ?? 0) * 0.3;
   
   if (debtRatio < effectiveTolerance) {
-    c.economyDerivative = 0.1 + gdpBonus; // more visible positive recovery
+    c.economyDerivative = 0.1 + gdpBonus;
   } else {
     const excess = debtRatio - effectiveTolerance;
-    c.economyDerivative = -(excess * excess) * 0.005; // stronger negative pressure
+    c.economyDerivative = -(excess * excess) * 0.005;
   }
 
-  // Mine pressure on economy
   c.economy = Math.max(0, Math.min(100, c.economy + c.economyDerivative - r.kamikazeMineCount * 0.5));
 
-  // Trade routes income
-  const tradeBonus = 1 + (state.upgrades.c_trade_routes?.level ?? 0) * 0.05;
-  c.money += 10 * tradeBonus;
-
-  // War cost
-  c.warCostPerSec = c.patriots * 50 + c.miniguns * 10 + c.radarSpots * 20;
-  c.money -= c.warCostPerSec / 10;
-  c.debt += c.warCostPerSec / 10;
+  // === FOG OF WAR ===
+  // Radars push the fog limit further into regime territory
+  c.fogOfWarLimit = 0.42 + c.radarSpots * 0.06;
+  // Clamp to max visible
+  c.fogOfWarLimit = Math.min(1.0, c.fogOfWarLimit);
 
   // Scan cooldown/timer
   if (c.scanCooldown > 0) {
@@ -252,13 +254,11 @@ export function gameTick(prev: GameState): GameState {
     c.scanTimer -= 1;
     if (c.scanTimer <= 0) {
       c.scanActive = false;
-      // Un-reveal all bases
       r.bases.forEach(b => { b.revealed = false; });
     }
   }
 
   // === COMBAT ===
-  // Auto-launch from stocks
   let dronesLaunched = 0;
   let missilesLaunched = 0;
 
@@ -275,34 +275,40 @@ export function gameTick(prev: GameState): GameState {
     r.totalMissilesLaunched += batch;
   }
 
-  // Coalition auto-launch
   let strikesLaunched = 0;
   if (c.strikeStock.autoLaunch && c.strikeStock.stock > 0) {
     c.strikeStock.stock -= 1;
     strikesLaunched += 1;
   }
 
-  // Interception
+  // === INTERCEPTION ===
+  // Drones: miniguns + laser
   const stealthReduction = 1 - (state.upgrades.r_stealth_drones?.level ?? 0) * 0.08;
+  const minigunUpgrade = 1 + (state.upgrades.c_minigun_upgrade?.level ?? 0) * 0.2;
+  const minigunAntiDrone = c.miniguns * 4 * minigunUpgrade * stealthReduction;
+  const laserIntercept = c.laserDefense;
+  const fighterIntercept = c.fighterStock.stock * 2;
+  const totalAntiDrone = minigunAntiDrone + laserIntercept + fighterIntercept;
+  const dronesIntercepted = Math.min(dronesLaunched, Math.floor(totalAntiDrone));
+
+  // Missiles: interceptor missiles (from patriot stock)
+  // Only intercept missiles that are within fog-cleared zone
+  // Missiles originate from regime bases (x > 0.6), travel left
+  // They become "detected" when they cross fogOfWarLimit
+  // We simulate: missiles in fog = undetectable, past fog = interceptable
   const decoyReduction = 1 - (state.upgrades.r_decoy_missiles?.level ?? 0) * 0.08;
   const patriotUpgrade = 1 + (state.upgrades.c_patriot_upgrade?.level ?? 0) * 0.15;
-  const minigunUpgrade = 1 + (state.upgrades.c_minigun_upgrade?.level ?? 0) * 0.2;
-
-  // Miniguns: excellent vs drones, useless vs missiles
-  const minigunAntiDrone = c.miniguns * 4 * minigunUpgrade * stealthReduction;
-  // Patriots: excellent vs missiles, wasteful vs drones
-  const patriotAntiMissile = c.patriots * 3 * patriotUpgrade * decoyReduction;
-  const patriotAntiDrone = c.patriots * 0.5; // bad efficiency
-  // Laser
-  const laserIntercept = c.laserDefense;
-  // Fighters intercept drones well
-  const fighterIntercept = c.fighterStock.stock * 2;
-
-  const totalAntiDrone = minigunAntiDrone + patriotAntiDrone + laserIntercept + fighterIntercept;
-  const totalAntiMissile = patriotAntiMissile;
-
-  const dronesIntercepted = Math.min(dronesLaunched, Math.floor(totalAntiDrone));
-  const missilesIntercepted = Math.min(missilesLaunched, Math.floor(totalAntiMissile));
+  
+  // Detected missiles = those that have entered the visible zone
+  // More radars = earlier detection = more time to intercept = higher rate
+  const detectionRate = Math.min(1, (c.fogOfWarLimit - 0.42) / 0.58); // 0 at frontline, 1 at full coverage
+  const detectedMissiles = Math.floor(missilesLaunched * detectionRate);
+  
+  // Each interceptor can stop 1 missile
+  const interceptorsUsed = Math.min(detectedMissiles, c.interceptorStock);
+  const interceptorEfficiency = patriotUpgrade * decoyReduction;
+  const missilesIntercepted = Math.min(detectedMissiles, Math.floor(interceptorsUsed * interceptorEfficiency));
+  c.interceptorStock = Math.max(0, c.interceptorStock - interceptorsUsed);
 
   const droneImpacts = Math.max(0, dronesLaunched - dronesIntercepted);
   const missileImpacts = Math.max(0, missilesLaunched - missilesIntercepted);
@@ -312,37 +318,30 @@ export function gameTick(prev: GameState): GameState {
   const totalIntercepted = dronesIntercepted + missilesIntercepted;
   const interceptionRate = totalIncoming > 0 ? totalIntercepted / totalIncoming : 1;
 
-  // Public support derivative
+  // Public support
   const mediaBonus = 1 - (state.upgrades.c_media_campaign?.level ?? 0) * 0.1;
   const censorshipBonus = 1 - (state.upgrades.c_censorship?.level ?? 0) * 0.12;
   const fatiguResist = 1 - (state.upgrades.c_war_fatigue_resist?.level ?? 0) * 0.1;
 
   let supportChange = 0;
-  // Missile interception > 95% = positive
   if (interceptionRate > 0.95 && totalIncoming > 0) {
     supportChange += 0.05;
   } else if (totalIncoming > 0) {
     const deficit = 0.95 - interceptionRate;
     supportChange -= deficit * deficit * 5;
   }
-  // Impacts
   supportChange -= missileImpacts * 1.5 * censorshipBonus;
   supportChange -= droneImpacts * 0.2 * mediaBonus;
-  // War fatigue
   supportChange -= 0.02 * fatiguResist;
 
-  // Carpet bombing penalty
   if ((state.upgrades.c_carpet?.level ?? 0) > 0) {
     supportChange -= 0.08 * (state.upgrades.c_carpet?.level ?? 0);
   }
 
   c.publicSupportDerivative = supportChange;
   c.publicSupport = Math.max(0, Math.min(100, c.publicSupport + supportChange));
-
-  // Hand Free = economy * publicSupport / 100
   c.handFree = (c.economy / 100) * (c.publicSupport / 100) * 100;
 
-  // Fervor from hits
   r.fervor = Math.min(100, r.fervor + droneImpacts * 0.5 + missileImpacts * 2);
 
   // === STRIKES on regime bases ===
@@ -361,17 +360,15 @@ export function gameTick(prev: GameState): GameState {
       const hitChance = (c.strikeAccuracy * c.intelligenceModifier * carpetBonus) / defMod;
       
       if (Math.random() < hitChance) {
-        // Pick a target base
         const targetableBases = aliveBases.filter(b => {
           if (b.burialLevel > bunkerBuster) return false;
           if ((b.type === 'civilian' || b.type === 'fake') && !b.revealed && !c.scanActive) return false;
           return true;
         });
-        // Without scan, can also hit civilian/fake thinking they're military
         const allVisible = aliveBases.filter(b => {
           if (b.burialLevel > bunkerBuster) return false;
           if (b.type === 'civilian' || b.type === 'fake') {
-            return b.revealed || !c.scanActive; // without scan, they look military
+            return b.revealed || !c.scanActive;
           }
           return true;
         });
@@ -386,7 +383,7 @@ export function gameTick(prev: GameState): GameState {
             civilianHits += 1;
             target.alive = false;
             c.publicSupport = Math.max(0, c.publicSupport - 8);
-            r.fervor = Math.max(0, r.fervor - 3); // regime also loses fervor from civilian deaths
+            r.fervor = Math.max(0, r.fervor - 3);
           } else {
             target.alive = false;
             basesDestroyed += 1;
@@ -397,7 +394,6 @@ export function gameTick(prev: GameState): GameState {
     }
   }
 
-  // Embedded journalists: strikes boost support
   if (basesDestroyed > 0 && (state.upgrades.c_embedded_journalists?.level ?? 0) > 0) {
     c.publicSupport = Math.min(100, c.publicSupport + basesDestroyed * 0.5 * (state.upgrades.c_embedded_journalists?.level ?? 0));
   }
@@ -405,7 +401,6 @@ export function gameTick(prev: GameState): GameState {
   // Nuclear check
   if (r.resilience >= 95 && !r.nuclearUnlocked && !state.milestones.nuclear_unlocked) {
     r.nuclearUnlocked = true;
-    // Create a hidden nuclear base
     const nBase = createBase('military');
     nBase.burialLevel = 3;
     nBase.scansRequired = 3;
@@ -427,7 +422,7 @@ export function gameTick(prev: GameState): GameState {
 
   // Doctrine adaptation
   const antiDroneStrength = minigunAntiDrone + fighterIntercept;
-  const antiMissileStrength = patriotAntiMissile;
+  const antiMissileStrength = c.interceptorStock;
   if (antiMissileStrength > antiDroneStrength * 1.3) {
     r.droneBias = Math.min(3, r.droneBias + 0.003);
     r.missileBias = Math.max(0.5, r.missileBias - 0.001);
@@ -477,61 +472,46 @@ export function gameTick(prev: GameState): GameState {
 
 // === PLAYER ACTIONS ===
 
-// Coalition: Buy Patriot (construction)
+// Coalition: all purchases add debt directly — no money check
 export function buyPatriot(state: GameState): GameState {
-  if (state.coalition.money < state.coalition.patriotCost) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
-  s.coalition.money -= s.coalition.patriotCost;
   s.coalition.debt += s.coalition.patriotCost;
   s.coalition.patriots += 1;
+  s.coalition.interceptorMax = s.coalition.patriots * 3;
   return s;
 }
 
-// Coalition: Buy Minigun
 export function buyMinigun(state: GameState): GameState {
-  if (state.coalition.money < state.coalition.minigunCost) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
-  s.coalition.money -= s.coalition.minigunCost;
   s.coalition.debt += s.coalition.minigunCost;
   s.coalition.miniguns += 1;
   return s;
 }
 
-// Coalition: Build Radar Spot
 export function buildRadar(state: GameState): GameState {
-  if (state.coalition.money < state.coalition.radarSpotCost) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
-  s.coalition.money -= s.coalition.radarSpotCost;
   s.coalition.debt += s.coalition.radarSpotCost;
   s.coalition.radarSpots += 1;
+  s.coalition.fogOfWarLimit = Math.min(1.0, 0.42 + s.coalition.radarSpots * 0.06);
   return s;
 }
 
-// Coalition: Buy Strike (into stock)
 export function buyStrike(state: GameState): GameState {
-  const cost = 800;
-  if (state.coalition.money < cost) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
-  s.coalition.money -= cost;
-  s.coalition.debt += cost;
+  s.coalition.debt += 800;
   s.coalition.strikeStock.producing = true;
   s.coalition.strikeStock.productionProgress = 0;
   return s;
 }
 
-// Coalition: Buy Fighter (into stock)
 export function buyFighter(state: GameState): GameState {
-  const cost = 2000;
-  if (state.coalition.money < cost) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
-  s.coalition.money -= cost;
-  s.coalition.debt += cost;
+  s.coalition.debt += 2000;
   s.coalition.fighterStock.producing = true;
   s.coalition.fighterStock.productionProgress = 0;
   return s;
 }
 
-// Coalition: Launch strikes from stock
 export function launchStrikes(state: GameState, count: number): GameState {
   const available = Math.min(count, state.coalition.strikeStock.stock);
   if (available <= 0) return state;
@@ -540,7 +520,6 @@ export function launchStrikes(state: GameState, count: number): GameState {
   return s;
 }
 
-// Coalition: Launch fighters from stock
 export function launchFighters(state: GameState, count: number): GameState {
   const available = Math.min(count, state.coalition.fighterStock.stock);
   if (available <= 0) return state;
@@ -549,27 +528,23 @@ export function launchFighters(state: GameState, count: number): GameState {
   return s;
 }
 
-// Coalition: Treasury Bonds
 export function issueBonds(state: GameState): GameState {
   const s: GameState = JSON.parse(JSON.stringify(state));
   const bondAmount = 5000;
   s.coalition.debt += bondAmount;
-  s.coalition.incomePerTick += 5; // permanent income per tick
+  s.coalition.incomePerTick += 5;
   s.coalition.debtBreakdownTolerance += 0.5;
   return s;
 }
 
-// Coalition: Public Tax
 export function publicTax(state: GameState): GameState {
   const s: GameState = JSON.parse(JSON.stringify(state));
   const taxAmount = 2000;
   s.coalition.debt = Math.max(0, s.coalition.debt - taxAmount);
-  s.coalition.money += taxAmount;
   s.coalition.publicSupport = Math.max(0, s.coalition.publicSupport - 5);
   return s;
 }
 
-// Coalition: Activate Scan
 export function activateScan(state: GameState): GameState {
   if (!state.coalition.scanAvailable || state.coalition.scanActive) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
@@ -578,7 +553,6 @@ export function activateScan(state: GameState): GameState {
   s.coalition.scanTimer = scanDuration;
   s.coalition.scanAvailable = false;
   s.coalition.scanCooldown = 60;
-  // Reveal bases in scan zone
   s.regime.bases.forEach(b => {
     if (b.alive) {
       const camoBonus = (state.upgrades.r_camouflage?.level ?? 0) * 0.15;
@@ -594,7 +568,6 @@ export function activateScan(state: GameState): GameState {
   return s;
 }
 
-// Regime: Build Base
 export function regimeBuildBase(state: GameState, type: 'military' | 'civilian' | 'fake' = 'military'): GameState {
   const cost = type === 'military' ? state.regime.baseCost : type === 'civilian' ? state.regime.baseCost * 0.6 : state.regime.baseCost * 0.3;
   if (state.regime.money < cost) return state;
@@ -604,7 +577,6 @@ export function regimeBuildBase(state: GameState, type: 'military' | 'civilian' 
   return s;
 }
 
-// Regime: Bury Base
 export function buryBase(state: GameState, baseId: string): GameState {
   const base = state.regime.bases.find(b => b.id === baseId && b.alive);
   if (!base || base.burialLevel >= 3) return state;
@@ -618,7 +590,6 @@ export function buryBase(state: GameState, baseId: string): GameState {
   return s;
 }
 
-// Regime: Buy drones (into stock)
 export function buyDrones(state: GameState, count: number): GameState {
   const fervorDiscount = Math.max(0.3, 1 - state.regime.fervor * 0.005);
   const cost = state.regime.droneCost * fervorDiscount * count;
@@ -629,7 +600,6 @@ export function buyDrones(state: GameState, count: number): GameState {
   return s;
 }
 
-// Regime: Buy missiles (into stock)
 export function buyMissiles(state: GameState, count: number): GameState {
   const fervorDiscount = Math.max(0.3, 1 - state.regime.fervor * 0.005);
   const cost = state.regime.missileCost * fervorDiscount * count;
@@ -640,7 +610,6 @@ export function buyMissiles(state: GameState, count: number): GameState {
   return s;
 }
 
-// Regime: Launch drones from stock
 export function regimeLaunchDrones(state: GameState, count: number): GameState {
   const available = Math.min(count, state.regime.droneStock.stock);
   if (available <= 0) return state;
@@ -650,7 +619,6 @@ export function regimeLaunchDrones(state: GameState, count: number): GameState {
   return s;
 }
 
-// Regime: Launch missiles from stock
 export function regimeLaunchMissiles(state: GameState, count: number): GameState {
   const available = Math.min(count, state.regime.missileStock.stock);
   if (available <= 0) return state;
@@ -660,7 +628,6 @@ export function regimeLaunchMissiles(state: GameState, count: number): GameState
   return s;
 }
 
-// Regime: Oil Shipping
 export function oilShipping(state: GameState): GameState {
   const cost = 20 + state.regime.oilShippingLevel * 10;
   if (state.regime.money < cost) return state;
@@ -670,7 +637,6 @@ export function oilShipping(state: GameState): GameState {
   return s;
 }
 
-// Regime: Kamikaze Mine
 export function deployKamikazeMine(state: GameState): GameState {
   if (state.regime.money < state.regime.kamikazeMineCost) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
@@ -680,14 +646,12 @@ export function deployKamikazeMine(state: GameState): GameState {
   return s;
 }
 
-// Regime: Radar Lockdown
 export function radarLockdown(state: GameState): GameState {
   if (!state.regime.radarLockdownAvailable) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
   s.regime.radarLockdownAvailable = false;
   const jamDuration = 20 + (state.upgrades.r_radar_jam?.level ?? 0) * 6;
   s.regime.radarLockdownCooldown = 80;
-  // Disable coalition scan for duration
   if (s.coalition.scanActive) {
     s.coalition.scanActive = false;
     s.coalition.scanTimer = 0;
@@ -698,7 +662,6 @@ export function radarLockdown(state: GameState): GameState {
   return s;
 }
 
-// Research
 export function startResearch(state: GameState, upgradeId: string): GameState {
   const upgrade = UPGRADES.find(u => u.id === upgradeId);
   if (!upgrade) return state;
@@ -706,13 +669,11 @@ export function startResearch(state: GameState, upgradeId: string): GameState {
   if (!u || u.researching || u.level >= upgrade.maxLevel) return state;
 
   const cost = getUpgradeCost(upgrade, u.level);
-  // Coalition pays with money (adds debt), regime pays with money
-  if (upgrade.side === 'coalition' && state.coalition.money < cost) return state;
   if (upgrade.side === 'regime' && state.regime.money < cost) return state;
 
   const s: GameState = JSON.parse(JSON.stringify(state));
   if (upgrade.side === 'coalition') {
-    s.coalition.money -= cost;
+    // Coalition: just add debt
     s.coalition.debt += cost;
   } else {
     s.regime.money -= cost;
@@ -730,5 +691,6 @@ export function canAffordUpgrade(state: GameState, upgradeId: string): boolean {
   if (!u || u.level >= upgrade.maxLevel || u.researching) return false;
   const cost = getUpgradeCost(upgrade, u.level);
   if (upgrade.side === 'regime') return state.regime.money >= cost;
-  return state.coalition.money >= cost;
+  // Coalition can always afford — it's debt
+  return true;
 }

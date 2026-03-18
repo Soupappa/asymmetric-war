@@ -5,8 +5,8 @@ export type GamePhase = 'early' | 'mid' | 'late' | 'nuclear';
 export interface StockItem {
   stock: number;
   producing: boolean;
-  productionProgress: number; // 0-1
-  productionTime: number; // ticks per unit
+  productionProgress: number;
+  productionTime: number;
   autoBuy: boolean;
   autoLaunch: boolean;
 }
@@ -16,12 +16,12 @@ export type BaseType = 'military' | 'civilian' | 'fake';
 export interface RegimeBase {
   id: string;
   type: BaseType;
-  burialLevel: number; // 0-3
-  scansRequired: number; // scans needed to reveal (increases with burial)
+  burialLevel: number;
+  scansRequired: number;
   scansReceived: number;
   revealed: boolean;
   alive: boolean;
-  x: number; // battlefield position
+  x: number;
   y: number;
 }
 
@@ -34,8 +34,8 @@ export interface UpgradeDef {
   costExponent: number;
   maxLevel: number;
   side: 'coalition' | 'regime';
-  branch: string; // doctrine branch
-  tier: number; // unlock tier within branch
+  branch: string;
+  tier: number;
   researchTime: number;
   effect: (state: GameState, level: number) => void;
 }
@@ -49,83 +49,81 @@ export interface UpgradeState {
 
 // === REGIME STATE ===
 export interface RegimeState {
-  // Economy
-  money: number; // reserve bar
-  moneyRegen: number; // per tick
-  oilShippingLevel: number; // diminishing returns
+  money: number;
+  moneyRegen: number;
+  oilShippingLevel: number;
   
-  // Macro bar: Resilience = (fervor/100) * (dispersion/100) * 100
-  fervor: number; // 0-100, starts 25
-  dispersion: number; // 0-100, starts 25
-  resilience: number; // computed: fervor * dispersion / 100
+  fervor: number;
+  dispersion: number;
+  resilience: number;
 
-  // Bases
   bases: RegimeBase[];
   baseCost: number;
 
-  // Stocks
   droneStock: StockItem;
   missileStock: StockItem;
 
-  // Unit costs (reduced by fervor)
   droneCost: number;
   missileCost: number;
 
-  // Stats
   totalDronesLaunched: number;
   totalMissilesLaunched: number;
   antiAirLevel: number;
 
-  // Kamikaze mines
   kamikazeMineCount: number;
   kamikazeMineCost: number;
 
-  // Radar lockdown
   radarLockdownAvailable: boolean;
   radarLockdownCooldown: number;
 
-  // Nuclear
   nuclearUnlocked: boolean;
-  nuclearProgress: number; // 0-100 countdown
+  nuclearProgress: number;
   nuclearBaseId: string | null;
 
-  // Doctrine bias (adaptive)
   droneBias: number;
   missileBias: number;
 }
 
 // === COALITION STATE ===
 export interface CoalitionState {
-  // Economy: debt-based
-  debt: number; // starts 0, grows with spending
-  money: number; // current available cash (from bonds/tax/income)
-  incomePerTick: number; // from treasury bonds
-  debtBreakdownTolerance: number; // % of PIB before economy derivative goes negative
+  // Debt-only economy: no money pool, all spending = debt
+  debt: number;
+  incomePerTick: number; // from treasury bonds, reduces net debt growth
+  debtBreakdownTolerance: number;
 
-  // Macro bar: Hand Free = (economy/100) * (publicSupport/100) * 100
-  economy: number; // 0-100, starts 100
-  economyDerivative: number; // per tick change
-  publicSupport: number; // 0-100, starts 100
+  // Macro bar
+  economy: number;
+  economyDerivative: number;
+  publicSupport: number;
   publicSupportDerivative: number;
-  handFree: number; // computed
+  handFree: number;
 
   // Stocks
   strikeStock: StockItem;
   fighterStock: StockItem;
 
-  // Defense (construction-based, not stock)
-  patriots: number; // heavy AA, good vs missiles
+  // Interceptor missiles (auto-recharge from patriots)
+  interceptorStock: number;
+  interceptorMax: number; // = patriots * 3
+  interceptorRechargeTimer: number;
+  interceptorRechargeTime: number; // ticks per interceptor
+
+  // Defense
+  patriots: number;
   patriotCost: number;
-  miniguns: number; // cheap AA, good vs drones
+  miniguns: number;
   minigunCost: number;
   radarSpots: number;
   radarSpotCost: number;
+
+  // Fog of war: 0.0 = front line (0.42), extends right with radars
+  fogOfWarLimit: number; // x-position on battlefield where fog starts
 
   // Scan
   scanAvailable: boolean;
   scanCooldown: number;
   scanActive: boolean;
-  scanTimer: number; // remaining ticks of active scan
+  scanTimer: number;
   scanZoneX: number;
   scanZoneY: number;
 
@@ -136,10 +134,10 @@ export interface CoalitionState {
   strikeAccuracy: number;
   intelligenceModifier: number;
   laserDefense: number;
-  warCostPerSec: number;
+  maintenanceCost: number; // constant cost per tick even idle
 
   // Rafale bonus
-  recentStrikeTimestamps: number[]; // for grouped strike bonus
+  recentStrikeTimestamps: number[];
 }
 
 // === COMBAT LOG ===
@@ -175,9 +173,6 @@ export interface GameState {
   autoFireRegime: boolean;
   autoFireCoalition: boolean;
 
-  // Constants
   coalitionPibBase: number;
-
-  // Log-worthy events tracker
   milestones: Record<string, boolean>;
 }

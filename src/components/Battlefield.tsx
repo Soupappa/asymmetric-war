@@ -3,7 +3,7 @@ import { GameState } from '../game/types';
 
 interface Projectile {
   id: number;
-  type: 'drone' | 'missile' | 'strike' | 'fighter';
+  type: 'drone' | 'missile' | 'strike' | 'fighter' | 'interceptor';
   x: number; y: number;
   targetX: number; targetY: number;
   speed: number; progress: number;
@@ -42,11 +42,10 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Stable position cache for coalition defenses
   const coalitionPositionsRef = useRef<Map<string, { x: number; y: number; pulsePhase: number }>>(new Map());
   const prevCountsRef = useRef({ patriots: 0, miniguns: 0, radars: 0, baseIds: '' });
 
-  // Sync units from state — only regenerate when counts actually change
+  // Sync units from state
   useEffect(() => {
     const baseIds = state.regime.bases.filter(b => b.alive).map(b => b.id).join(',');
     const counts = {
@@ -65,7 +64,6 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
     prevCountsRef.current = counts;
 
     const units: MapUnit[] = [];
-    // Regime bases (positions come from state)
     for (const b of state.regime.bases) {
       if (!b.alive) continue;
       units.push({
@@ -76,7 +74,6 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
       });
     }
 
-    // Coalition defenses — use cached positions, only generate new ones for added units
     const posCache = coalitionPositionsRef.current;
     const newCache = new Map<string, { x: number; y: number; pulsePhase: number }>();
 
@@ -125,19 +122,26 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
       targetY = 0.1 + Math.random() * 0.8;
     }
 
+    // Fog of war affects interception for missiles
+    const fogLimit = s.coalition.fogOfWarLimit;
     let interceptChance: number;
     if (type === 'drone') {
       const cap = s.coalition.miniguns * 4 + s.coalition.laserDefense;
       interceptChance = Math.min(0.95, cap / Math.max(1, 10 + cap) * 1.2);
     } else if (type === 'missile') {
-      const cap = s.coalition.patriots * 3;
-      interceptChance = Math.min(0.85, cap / Math.max(1, 5 + cap));
+      // Interception depends on: interceptors available AND detection (fog)
+      const detectionRate = Math.min(1, (fogLimit - 0.42) / 0.58);
+      const hasInterceptor = s.coalition.interceptorStock > 0;
+      interceptChance = hasInterceptor ? Math.min(0.9, detectionRate * 0.95) : 0;
     } else {
       interceptChance = 1 - s.coalition.strikeAccuracy;
     }
 
     const willIntercept = (type === 'drone' || type === 'missile') && Math.random() < interceptChance;
-    const interceptProgress = willIntercept ? 0.3 + Math.random() * 0.5 : 1;
+    // Missiles intercepted later when fog is shallow (detected late)
+    const interceptProgress = willIntercept 
+      ? (type === 'missile' ? Math.max(0.2, 1 - (fogLimit - 0.42) / 0.58 * 0.7) : 0.3 + Math.random() * 0.5) 
+      : 1;
 
     projectilesRef.current.push({
       id: nextId++, type,
@@ -152,6 +156,25 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
       size: type === 'drone' ? 2 : type === 'missile' ? 5 : type === 'fighter' ? 3 : 5,
       alive: true, explosionTimer: 0,
     });
+
+    // Spawn interceptor missile for missile interception
+    if (type === 'missile' && willIntercept) {
+      const patriots = unitsRef.current.filter(u => u.type === 'patriot' && u.alive);
+      if (patriots.length > 0) {
+        const pat = patriots[Math.floor(Math.random() * patriots.length)];
+        // Interceptor launches from patriot toward interception point
+        const intX = startX + (targetX - startX) * interceptProgress;
+        const intY = startY + (targetY - startY) * interceptProgress;
+        projectilesRef.current.push({
+          id: nextId++, type: 'interceptor',
+          x: pat.x, y: pat.y, targetX: intX, targetY: intY,
+          speed: 0.25 + Math.random() * 0.1,
+          progress: 0, intercepted: false, interceptAt: 1,
+          trail: [], wobble: 0, size: 3,
+          alive: true, explosionTimer: 0,
+        });
+      }
+    }
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -211,6 +234,31 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
       ctx.beginPath(); ctx.moveTo(w * 0.42, 0); ctx.lineTo(w * 0.42, h); ctx.stroke();
       ctx.setLineDash([]);
 
+      const fogLimit = stateRef.current.coalition.fogOfWarLimit;
+
+      // FOG OF WAR — dark overlay on regime territory beyond radar range
+      const fogStartX = fogLimit * w;
+      if (fogStartX < w) {
+        const fogGrad = ctx.createLinearGradient(fogStartX - 30, 0, fogStartX + 40, 0);
+        fogGrad.addColorStop(0, 'hsla(220, 20%, 4%, 0)');
+        fogGrad.addColorStop(1, 'hsla(220, 20%, 4%, 0.85)');
+        ctx.fillStyle = fogGrad;
+        ctx.fillRect(fogStartX - 30, 0, w - fogStartX + 30, h);
+        // Solid fog further out
+        ctx.fillStyle = 'hsla(220, 20%, 4%, 0.85)';
+        ctx.fillRect(fogStartX + 40, 0, w - fogStartX - 40, h);
+        // Fog label
+        ctx.font = '10px Orbitron';
+        ctx.fillStyle = 'hsla(0, 0%, 50%, 0.4)';
+        ctx.fillText('FOG OF WAR', fogStartX + 10, 16);
+        // Fog limit line
+        ctx.strokeStyle = 'hsla(180, 60%, 50%, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 6]);
+        ctx.beginPath(); ctx.moveTo(fogStartX, 0); ctx.lineTo(fogStartX, h); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
       // Scan zone
       if (stateRef.current.coalition.scanActive) {
         const sx = 0.6 * w; const sy = 0.1 * h; const sw = 0.38 * w; const sh = 0.8 * h;
@@ -231,26 +279,30 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
       ctx.fillStyle = 'hsla(210, 80%, 55%, 0.4)';
       ctx.fillText('COALITION', 10, 16);
       ctx.fillStyle = 'hsla(0, 70%, 50%, 0.4)';
-      ctx.fillText('REGIME', w - 70, 16);
+      if (fogStartX >= w - 60) {
+        ctx.fillText('REGIME', w - 70, 16);
+      }
 
       const now = time / 1000;
 
-      // Draw units
+      // Draw units (bases in fog are dimmed/hidden)
       for (const u of unitsRef.current) {
         if (!u.alive) continue;
         const ux = u.x * w;
         const uy = u.y * h;
 
+        // Check if unit is in fog (regime bases)
+        const inFog = u.type.startsWith('base_') && u.x > fogLimit && !stateRef.current.coalition.scanActive;
+
         if (u.type === 'base_military') {
+          if (inFog) continue; // hidden by fog
           const pulse = 0.8 + Math.sin(now * 2 + u.pulsePhase) * 0.2;
           const buried = u.burialLevel ?? 0;
-          // Glow
           const glow = ctx.createRadialGradient(ux, uy, 0, ux, uy, 14);
           glow.addColorStop(0, `hsla(0, 70%, 50%, ${0.25 * pulse})`);
           glow.addColorStop(1, 'hsla(0, 70%, 50%, 0)');
           ctx.fillStyle = glow;
           ctx.beginPath(); ctx.arc(ux, uy, 14, 0, Math.PI * 2); ctx.fill();
-          // Diamond
           ctx.save();
           ctx.translate(ux, uy);
           ctx.rotate(Math.PI / 4);
@@ -260,7 +312,6 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           ctx.lineWidth = 1;
           ctx.strokeRect(-5, -5, 10, 10);
           ctx.restore();
-          // Burial indicator
           if (buried > 0) {
             ctx.fillStyle = 'hsla(30, 60%, 50%, 0.6)';
             for (let i = 0; i < buried; i++) {
@@ -268,7 +319,7 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
             }
           }
         } else if (u.type === 'base_civilian') {
-          // Green-ish house
+          if (inFog) continue;
           ctx.fillStyle = 'hsla(120, 30%, 35%, 0.7)';
           ctx.fillRect(ux - 5, uy - 4, 10, 8);
           ctx.beginPath();
@@ -279,7 +330,7 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           ctx.fillStyle = 'hsla(120, 40%, 40%, 0.8)';
           ctx.fill();
         } else if (u.type === 'base_fake') {
-          // Looks like military but slightly different shade
+          if (inFog) continue;
           ctx.save();
           ctx.translate(ux, uy);
           ctx.rotate(Math.PI / 4);
@@ -290,7 +341,6 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           ctx.strokeRect(-4, -4, 8, 8);
           ctx.restore();
         } else if (u.type === 'patriot') {
-          // Big blue circle with cross
           const glow = ctx.createRadialGradient(ux, uy, 0, ux, uy, 18);
           glow.addColorStop(0, 'hsla(210, 80%, 55%, 0.15)');
           glow.addColorStop(1, 'hsla(210, 80%, 55%, 0)');
@@ -301,31 +351,27 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           ctx.strokeStyle = 'hsl(210, 70%, 55%)';
           ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.arc(ux, uy, 6, 0, Math.PI * 2); ctx.stroke();
-          // Sweep
           const sweep = (now * 2 + u.pulsePhase) % (Math.PI * 2);
           ctx.strokeStyle = 'hsla(210, 80%, 60%, 0.3)';
           ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux + Math.cos(sweep) * 14, uy + Math.sin(sweep) * 14); ctx.stroke();
         } else if (u.type === 'minigun') {
-          // Small orange circle
           ctx.fillStyle = 'hsl(35, 70%, 40%)';
           ctx.beginPath(); ctx.arc(ux, uy, 3, 0, Math.PI * 2); ctx.fill();
           ctx.strokeStyle = 'hsl(35, 80%, 55%)';
           ctx.lineWidth = 1;
           ctx.beginPath(); ctx.arc(ux, uy, 3, 0, Math.PI * 2); ctx.stroke();
-          // Barrel
           ctx.strokeStyle = 'hsl(35, 60%, 50%)';
           ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux + 8, uy - 4); ctx.stroke();
         } else if (u.type === 'radar') {
-          // Radar dish
           ctx.strokeStyle = 'hsla(180, 60%, 50%, 0.6)';
           ctx.lineWidth = 1;
           const angle = (now * 1.5 + u.pulsePhase) % (Math.PI * 2);
           ctx.beginPath(); ctx.arc(ux, uy, 10, angle, angle + Math.PI * 0.4); ctx.stroke();
           ctx.fillStyle = 'hsla(180, 60%, 50%, 0.3)';
           ctx.beginPath(); ctx.arc(ux, uy, 2, 0, Math.PI * 2); ctx.fill();
-          // Visibility circle
+          // Radar detection range circle
           ctx.strokeStyle = 'hsla(180, 60%, 50%, 0.08)';
           ctx.beginPath(); ctx.arc(ux, uy, 35, 0, Math.PI * 2); ctx.stroke();
         }
@@ -357,7 +403,7 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           const curY = (p.y + dy * t + (perpY / len) * wobbleOffset * 0.01) * h;
 
           p.trail.push({ x: curX, y: curY });
-          const maxTrail = p.type === 'strike' ? 40 : p.type === 'missile' ? 30 : p.type === 'fighter' ? 15 : 10;
+          const maxTrail = p.type === 'strike' ? 40 : p.type === 'missile' ? 30 : p.type === 'interceptor' ? 20 : p.type === 'fighter' ? 15 : 10;
           if (p.trail.length > maxTrail) p.trail.shift();
 
           if (p.progress >= p.interceptAt && p.interceptAt < 1) {
@@ -366,11 +412,11 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           }
           if (p.progress >= 1) {
             p.alive = false;
-            p.explosionTimer = p.type === 'strike' ? 1.0 : p.type === 'missile' ? 0.8 : 0.4;
+            p.explosionTimer = p.type === 'strike' ? 1.0 : p.type === 'missile' ? 0.8 : p.type === 'interceptor' ? 0.3 : 0.4;
             impactsRef.current.push({ x: curX, y: curY, timer: 1.5, success: p.type !== 'strike' && p.type !== 'fighter', type: p.type });
           }
 
-          // Trail
+          // Trail rendering
           if (p.trail.length > 1) {
             ctx.beginPath();
             ctx.moveTo(p.trail[0].x, p.trail[0].y);
@@ -382,14 +428,16 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
               ctx.strokeStyle = 'hsla(180, 90%, 60%, 0.6)'; ctx.lineWidth = 2; ctx.stroke();
             } else if (p.type === 'drone') {
               ctx.strokeStyle = 'hsla(0, 55%, 50%, 0.35)'; ctx.lineWidth = 1; ctx.stroke();
+            } else if (p.type === 'interceptor') {
+              ctx.strokeStyle = 'hsla(210, 90%, 70%, 0.7)'; ctx.lineWidth = 2; ctx.stroke();
+              ctx.strokeStyle = 'hsla(210, 90%, 80%, 0.15)'; ctx.lineWidth = 6; ctx.stroke();
             } else {
-              // Missile: thick, direct, imposing
               ctx.strokeStyle = 'hsla(15, 90%, 55%, 0.85)'; ctx.lineWidth = 3; ctx.stroke();
               ctx.strokeStyle = 'hsla(25, 100%, 65%, 0.15)'; ctx.lineWidth = 8; ctx.stroke();
             }
           }
 
-          // Head
+          // Head rendering
           if (p.type === 'strike') {
             const grd = ctx.createRadialGradient(curX, curY, 0, curX, curY, 12);
             grd.addColorStop(0, 'hsla(195, 100%, 95%, 1)');
@@ -405,15 +453,30 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           } else if (p.type === 'drone') {
             ctx.fillStyle = 'hsl(0, 50%, 55%)';
             ctx.beginPath(); ctx.arc(curX, curY, 2, 0, Math.PI * 2); ctx.fill();
+          } else if (p.type === 'interceptor') {
+            // Blue interceptor missile
+            const grd = ctx.createRadialGradient(curX, curY, 0, curX, curY, 8);
+            grd.addColorStop(0, 'hsla(210, 100%, 90%, 1)');
+            grd.addColorStop(0.3, 'hsla(210, 100%, 65%, 0.7)');
+            grd.addColorStop(1, 'hsla(210, 80%, 40%, 0)');
+            ctx.fillStyle = grd;
+            ctx.beginPath(); ctx.arc(curX, curY, 8, 0, Math.PI * 2); ctx.fill();
+            // Body
+            const angle = Math.atan2(p.targetY - p.y, p.targetX - p.x);
+            ctx.save(); ctx.translate(curX, curY); ctx.rotate(angle);
+            ctx.fillStyle = 'hsl(210, 50%, 70%)';
+            ctx.fillRect(-6, -1.5, 12, 3);
+            ctx.fillStyle = 'hsl(210, 80%, 80%)';
+            ctx.fillRect(4, -2, 3, 4);
+            ctx.restore();
           } else {
-            // Missile: big body + fire
+            // Missile
             const grd = ctx.createRadialGradient(curX, curY, 0, curX, curY, 10);
             grd.addColorStop(0, 'hsla(20, 100%, 80%, 1)');
             grd.addColorStop(0.3, 'hsla(10, 100%, 60%, 0.7)');
             grd.addColorStop(1, 'hsla(0, 80%, 40%, 0)');
             ctx.fillStyle = grd;
             ctx.beginPath(); ctx.arc(curX, curY, 10, 0, Math.PI * 2); ctx.fill();
-            // Body
             const angle = Math.atan2(p.targetY - p.y, p.targetX - p.x);
             ctx.save(); ctx.translate(curX, curY); ctx.rotate(angle);
             ctx.fillStyle = 'hsl(0, 0%, 65%)';
@@ -428,16 +491,16 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
         if (!p.alive && p.explosionTimer > 0) {
           const last = p.trail[p.trail.length - 1];
           if (last) {
-            const maxR = p.intercepted ? 12 : (p.type === 'strike' ? 35 : p.type === 'missile' ? 28 : 10);
+            const maxR = p.intercepted ? 12 : (p.type === 'strike' ? 35 : p.type === 'missile' ? 28 : p.type === 'interceptor' ? 15 : 10);
             const r = (1 - p.explosionTimer) * maxR;
             const alpha = p.explosionTimer;
             if (p.intercepted) {
               const grd = ctx.createRadialGradient(last.x, last.y, 0, last.x, last.y, r);
-              grd.addColorStop(0, `hsla(0, 0%, 100%, ${alpha})`);
-              grd.addColorStop(1, 'hsla(0, 0%, 100%, 0)');
+              grd.addColorStop(0, `hsla(210, 80%, 90%, ${alpha})`);
+              grd.addColorStop(1, 'hsla(210, 80%, 70%, 0)');
               ctx.fillStyle = grd;
               ctx.beginPath(); ctx.arc(last.x, last.y, r, 0, Math.PI * 2); ctx.fill();
-              ctx.strokeStyle = `hsla(0, 0%, 100%, ${alpha * 0.8})`;
+              ctx.strokeStyle = `hsla(210, 80%, 80%, ${alpha * 0.8})`;
               ctx.lineWidth = 1.5;
               ctx.beginPath();
               ctx.moveTo(last.x - 5, last.y - 5); ctx.lineTo(last.x + 5, last.y + 5);
@@ -487,7 +550,7 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
       ctx.font = '9px JetBrains Mono';
       ctx.fillStyle = 'hsla(45, 50%, 60%, 0.5)';
       const active = stillAlive.filter(p => p.alive);
-      ctx.fillText(`🛩${active.filter(p => p.type === 'drone').length} 🚀${active.filter(p => p.type === 'missile').length} ⚡${active.filter(p => p.type === 'strike').length} ✈${active.filter(p => p.type === 'fighter').length}`, 10, h - 8);
+      ctx.fillText(`🛩${active.filter(p => p.type === 'drone').length} 🚀${active.filter(p => p.type === 'missile').length} ⚡${active.filter(p => p.type === 'strike').length} ✈${active.filter(p => p.type === 'fighter').length} 🛡${active.filter(p => p.type === 'interceptor').length}`, 10, h - 8);
 
       animRef.current = requestAnimationFrame(draw);
     };
