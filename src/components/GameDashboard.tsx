@@ -4,7 +4,8 @@ import {
   createInitialState, gameTick, canAffordUpgrade, startResearch,
   buyPatriot, buyMinigun, buildRadar, buyStrike, buyFighter,
   launchStrikes, launchFighters, issueBonds, publicTax, activateScan,
-  regimeBuildBase, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
+  activateFearBusiness,
+  regimeBuildBase, buryBase, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
   oilShipping, deployKamikazeMine, radarLockdown,
 } from '../game/engine';
 import { UPGRADES, getUpgradeCost, getMaxUnlockedTier } from '../game/upgrades';
@@ -125,8 +126,7 @@ const ActionBtn: React.FC<{ onClick: () => void; disabled?: boolean; side: 'coal
 const ToggleBtn: React.FC<{ active: boolean; onClick: () => void; label: string; side: 'coalition' | 'regime' }> = ({ active, onClick, label, side }) => (
   <button onClick={onClick}
     className={`px-2 py-0.5 text-[9px] rounded-sm border transition-colors ${
-      active ? `border-${side === 'coalition' ? 'coalition' : 'regime'} bg-${side === 'coalition' ? 'coalition' : 'regime'}/20 text-${side === 'coalition' ? 'coalition' : 'regime'}` 
-      : 'border-border text-muted-foreground'
+      active ? '' : 'border-border text-muted-foreground'
     }`} style={active ? { borderColor: `hsl(var(--${side === 'coalition' ? 'coalition-primary' : 'regime-primary'}))`, background: `hsl(var(--${side === 'coalition' ? 'coalition-primary' : 'regime-primary'}) / 0.2)`, color: `hsl(var(--${side === 'coalition' ? 'coalition-primary' : 'regime-primary'}))` } : {}}>
     {label}
   </button>
@@ -143,7 +143,6 @@ export default function GameDashboard() {
   const resetGame = useCallback(() => setState(createInitialState()), []);
   const handleResearch = useCallback((id: string) => setState(s => startResearch(s, id)), []);
 
-  // Coalition actions — no money checks, everything is debt
   const handleBuyPatriot = useCallback(() => { setState(s => buyPatriot(s)); }, []);
   const handleBuyMinigun = useCallback(() => { setState(s => buyMinigun(s)); }, []);
   const handleBuildRadar = useCallback(() => { setState(s => buildRadar(s)); }, []);
@@ -160,12 +159,13 @@ export default function GameDashboard() {
   const handleBonds = useCallback(() => setState(s => issueBonds(s)), []);
   const handleTax = useCallback(() => setState(s => publicTax(s)), []);
   const handleScan = useCallback(() => setState(s => activateScan(s)), []);
+  const handleFearBusiness = useCallback(() => setState(s => activateFearBusiness(s)), []);
 
-  // Regime actions
   const handleBuildBase = useCallback((type: 'military' | 'civilian' | 'fake') => {
     setState(s => regimeBuildBase(s, type));
     battlefieldRef.current?.addBase();
   }, []);
+  const handleBuryBase = useCallback((baseId: string) => setState(s => buryBase(s, baseId)), []);
   const handleBuyDrones = useCallback((n: number) => setState(s => buyDrones(s, n)), []);
   const handleBuyMissiles = useCallback((n: number) => setState(s => buyMissiles(s, n)), []);
   const handleLaunchDrones = useCallback((n: number) => {
@@ -180,7 +180,6 @@ export default function GameDashboard() {
   const handleKamikazeMine = useCallback(() => setState(s => deployKamikazeMine(s)), []);
   const handleRadarLockdown = useCallback(() => setState(s => radarLockdown(s)), []);
 
-  // Stock toggles
   const toggleAutoBuy = useCallback((side: 'coalition' | 'regime', item: 'drone' | 'missile' | 'strike' | 'fighter') => {
     setState(s => {
       const ns = JSON.parse(JSON.stringify(s));
@@ -230,6 +229,14 @@ export default function GameDashboard() {
   const fervorDiscount = Math.max(0.3, 1 - state.regime.fervor * 0.005);
   const effectiveDroneCost = Math.round(state.regime.droneCost * fervorDiscount);
   const effectiveMissileCost = Math.round(state.regime.missileCost * fervorDiscount);
+
+  // Interception percentage
+  const interceptionPct = state.coalition.totalIncoming > 0 
+    ? Math.round((state.coalition.totalIntercepted / state.coalition.totalIncoming) * 100) 
+    : 100;
+
+  // Scan cost
+  const scanCost = Math.round(state.coalition.scanBaseCost * Math.pow(1.8, state.coalition.scanConsecutiveCount));
 
   return (
     <div className="min-h-screen bg-background scanline">
@@ -299,17 +306,19 @@ export default function GameDashboard() {
               </div>
               <Bar value={state.coalition.economy} max={100} color="bg-coalition" label="Economy" showDerivative={state.coalition.economyDerivative} />
               <Bar value={state.coalition.publicSupport} max={100} color="bg-coalition" label="Public Support" showDerivative={state.coalition.publicSupportDerivative} />
-              <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="grid grid-cols-3 gap-2 mt-2">
                 <Stat label="Debt $" value={state.coalition.debt} color="text-danger" small />
                 <Stat label="Cost/t" value={Math.round(state.coalition.maintenanceCost / 10)} color="text-warning" small />
+                <Stat label="Intercept" value={`${interceptionPct}%`} color={interceptionPct > 80 ? 'text-success' : interceptionPct > 50 ? 'text-warning' : 'text-danger'} small />
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-1">
+              <div className="grid grid-cols-3 gap-2 mt-1">
                 <Stat label="Income/t" value={state.coalition.incomePerTick} small />
-                <Stat label="Interceptors" value={`${state.coalition.interceptorStock}/${state.coalition.interceptorMax}`} color="text-coalition" small />
+                <Stat label="Intercptrs" value={`${state.coalition.interceptorStock}/${state.coalition.interceptorMax}`} color="text-coalition" small />
+                <Stat label="On Patrol" value={state.coalition.fightersOnPatrol} small />
               </div>
-              <div className="mt-1">
-                <Stat label="Fog Limit" value={`${Math.round(state.coalition.fogOfWarLimit * 100)}%`} small />
-              </div>
+              {state.coalition.fearBusinessActive && (
+                <div className="mt-1 text-[9px] text-warning animate-pulse">⚡ FEAR BUSINESS — {state.coalition.fearBusinessTimer}t remaining</div>
+              )}
             </Panel>
           </div>
 
@@ -336,7 +345,7 @@ export default function GameDashboard() {
                   <ToggleBtn active={state.coalition.fighterStock.autoBuy} onClick={() => toggleAutoBuy('coalition', 'fighter')} label="Auto" side="coalition" />
                 </div>
                 <div className="flex gap-1 mt-1">
-                  <ActionBtn onClick={() => handleLaunchFighters(1)} disabled={state.coalition.fighterStock.stock < 1} side="coalition" className="flex-1">✈ Deploy ×1</ActionBtn>
+                  <ActionBtn onClick={() => handleLaunchFighters(1)} disabled={state.coalition.fighterStock.stock < 1} side="coalition" className="flex-1">✈ Patrol ×1</ActionBtn>
                   <ActionBtn onClick={() => handleLaunchFighters(3)} disabled={state.coalition.fighterStock.stock < 3} side="coalition" className="flex-1">×3</ActionBtn>
                   <ToggleBtn active={state.coalition.fighterStock.autoLaunch} onClick={() => toggleAutoLaunch('coalition', 'fighter')} label="Auto" side="coalition" />
                 </div>
@@ -368,16 +377,27 @@ export default function GameDashboard() {
               <Panel title="ECONOMIC & INTEL" side="coalition">
                 <div className="space-y-1">
                   <ActionBtn onClick={handleBonds} side="coalition" className="w-full">
-                    📜 Treasury Bonds — +$5K debt, +income/t
+                    📜 Treasury Bonds — +$5K debt, +income/t, +20 economy
                   </ActionBtn>
                   <ActionBtn onClick={handleTax} side="coalition" className="w-full">
-                    💰 Public Tax — −$2K debt, <span className="text-danger">−5 support</span>
+                    💰 Public Tax — −$2K debt, <span className="text-danger">−5 support</span>, +economy
                   </ActionBtn>
-                  <ActionBtn onClick={handleScan} disabled={!state.coalition.scanAvailable || state.coalition.scanActive} side="coalition" className="w-full">
+                  <ActionBtn onClick={handleScan} disabled={!state.coalition.scanAvailable || state.coalition.scanActive || state.regime.radarLockdownActive} side="coalition" className="w-full">
                     {state.coalition.scanActive ? `🔍 SCANNING... ${state.coalition.scanTimer}t` 
-                      : state.coalition.scanAvailable ? '🔍 Activate Scan' 
-                      : `🔍 Cooldown ${state.coalition.scanCooldown}t`}
+                      : state.regime.radarLockdownActive ? '🔍 JAMMED'
+                      : `🔍 Scan — +$${scanCost} debt`}
                   </ActionBtn>
+                  {state.coalition.scanConsecutiveCount > 0 && !state.coalition.scanActive && (
+                    <div className="text-[9px] text-muted-foreground">Chain ×{state.coalition.scanConsecutiveCount} — cost escalating</div>
+                  )}
+                  {state.coalition.fearBusinessAvailable && (
+                    <ActionBtn onClick={handleFearBusiness} side="coalition" className="w-full">
+                      💀 FEAR BUSINESS — sell stocks ×3, +50 eco, ×3 scan bonus 9s
+                    </ActionBtn>
+                  )}
+                  {state.coalition.fearBusinessActive && (
+                    <div className="text-[9px] text-warning">⚡ Fear Business active — {state.coalition.fearBusinessTimer}t</div>
+                  )}
                 </div>
               </Panel>
             )}
@@ -418,8 +438,8 @@ export default function GameDashboard() {
                   }`}>{state.phase}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Doctrine</span>
-                  <span>{state.regime.droneBias > state.regime.missileBias ? 'DRONE SWARM' : 'MISSILE HEAVY'}</span>
+                  <span className="text-muted-foreground">Interception Rate</span>
+                  <span className={interceptionPct > 80 ? 'text-success' : interceptionPct > 50 ? 'text-warning' : 'text-danger'}>{interceptionPct}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Bases (mil/civ/fake)</span>
@@ -437,6 +457,9 @@ export default function GameDashboard() {
                   <span className="text-muted-foreground">Fog of War</span>
                   <span>{Math.round(state.coalition.fogOfWarLimit * 100)}% visible</span>
                 </div>
+                {state.regime.radarLockdownActive && (
+                  <div className="text-danger animate-pulse">📡 RADAR JAMMED — {state.regime.radarLockdownTimer}t</div>
+                )}
               </div>
             </Panel>
             <Panel title="COMBAT LOG">
@@ -476,16 +499,20 @@ export default function GameDashboard() {
                 <StockDisplay label="Drones" stock={state.regime.droneStock.stock} producing={state.regime.droneStock.producing}
                   progress={state.regime.droneStock.productionProgress} time={state.regime.droneStock.productionTime} side="regime" />
                 <div className="flex gap-1 mt-1">
+                  <ActionBtn onClick={() => handleBuyDrones(1)} disabled={state.regime.money < effectiveDroneCost} side="regime" className="flex-1">
+                    ×1 ◆{effectiveDroneCost}
+                  </ActionBtn>
                   <ActionBtn onClick={() => handleBuyDrones(5)} disabled={state.regime.money < effectiveDroneCost * 5} side="regime" className="flex-1">
-                    Buy ×5 ◆{effectiveDroneCost * 5}
+                    ×5
                   </ActionBtn>
                   <ActionBtn onClick={() => handleBuyDrones(20)} disabled={state.regime.money < effectiveDroneCost * 20} side="regime" className="flex-1">×20</ActionBtn>
                   <ToggleBtn active={state.regime.droneStock.autoBuy} onClick={() => toggleAutoBuy('regime', 'drone')} label="Auto" side="regime" />
                 </div>
                 <div className="flex gap-1 mt-1">
-                  <ActionBtn onClick={() => handleLaunchDrones(5)} disabled={state.regime.droneStock.stock < 5} side="regime" className="flex-1">
-                    🛩 Fire ×5
+                  <ActionBtn onClick={() => handleLaunchDrones(1)} disabled={state.regime.droneStock.stock < 1} side="regime" className="flex-1">
+                    🛩 ×1
                   </ActionBtn>
+                  <ActionBtn onClick={() => handleLaunchDrones(5)} disabled={state.regime.droneStock.stock < 5} side="regime" className="flex-1">×5</ActionBtn>
                   <ActionBtn onClick={() => handleLaunchDrones(20)} disabled={state.regime.droneStock.stock < 20} side="regime" className="flex-1">×20</ActionBtn>
                   <ToggleBtn active={state.regime.droneStock.autoLaunch} onClick={() => toggleAutoLaunch('regime', 'drone')} label="Auto" side="regime" />
                 </div>
@@ -494,16 +521,18 @@ export default function GameDashboard() {
                 <StockDisplay label="Missiles" stock={state.regime.missileStock.stock} producing={state.regime.missileStock.producing}
                   progress={state.regime.missileStock.productionProgress} time={state.regime.missileStock.productionTime} side="regime" />
                 <div className="flex gap-1 mt-1">
-                  <ActionBtn onClick={() => handleBuyMissiles(3)} disabled={state.regime.money < effectiveMissileCost * 3} side="regime" className="flex-1">
-                    Buy ×3 ◆{effectiveMissileCost * 3}
+                  <ActionBtn onClick={() => handleBuyMissiles(1)} disabled={state.regime.money < effectiveMissileCost} side="regime" className="flex-1">
+                    ×1 ◆{effectiveMissileCost}
                   </ActionBtn>
+                  <ActionBtn onClick={() => handleBuyMissiles(3)} disabled={state.regime.money < effectiveMissileCost * 3} side="regime" className="flex-1">×3</ActionBtn>
                   <ActionBtn onClick={() => handleBuyMissiles(10)} disabled={state.regime.money < effectiveMissileCost * 10} side="regime" className="flex-1">×10</ActionBtn>
                   <ToggleBtn active={state.regime.missileStock.autoBuy} onClick={() => toggleAutoBuy('regime', 'missile')} label="Auto" side="regime" />
                 </div>
                 <div className="flex gap-1 mt-1">
-                  <ActionBtn onClick={() => handleLaunchMissiles(2)} disabled={state.regime.missileStock.stock < 2} side="regime" className="flex-1">
-                    🚀 Fire ×2
+                  <ActionBtn onClick={() => handleLaunchMissiles(1)} disabled={state.regime.missileStock.stock < 1} side="regime" className="flex-1">
+                    🚀 ×1
                   </ActionBtn>
+                  <ActionBtn onClick={() => handleLaunchMissiles(2)} disabled={state.regime.missileStock.stock < 2} side="regime" className="flex-1">×2</ActionBtn>
                   <ActionBtn onClick={() => handleLaunchMissiles(10)} disabled={state.regime.missileStock.stock < 10} side="regime" className="flex-1">×10</ActionBtn>
                   <ToggleBtn active={state.regime.missileStock.autoLaunch} onClick={() => toggleAutoLaunch('regime', 'missile')} label="Auto" side="regime" />
                 </div>
@@ -523,6 +552,23 @@ export default function GameDashboard() {
                     🎭 Fake Base ◆{Math.round(state.regime.baseCost * 0.3)}
                   </ActionBtn>
                 </div>
+                {/* Bury bases */}
+                {aliveBases.filter(b => b.burialLevel < 3).length > 0 && (
+                  <div className="mt-2 border-t border-border pt-2">
+                    <div className="text-[9px] text-muted-foreground mb-1">BURY BASES (hide from strikes)</div>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {aliveBases.filter(b => b.burialLevel < 3).slice(0, 8).map(b => {
+                        const tunnelDiscount = 1 - (state.upgrades.r_tunnel_network?.level ?? 0) * 0.2;
+                        const buryCost = Math.round((30 + b.burialLevel * 20) * tunnelDiscount);
+                        return (
+                          <ActionBtn key={b.id} onClick={() => handleBuryBase(b.id)} disabled={state.regime.money < buryCost} side="regime" className="w-full">
+                            ⛏ {b.type} Lv{b.burialLevel}→{b.burialLevel + 1} ◆{buryCost}
+                          </ActionBtn>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </Panel>
             )}
 
@@ -536,7 +582,9 @@ export default function GameDashboard() {
                     💣 Kamikaze Mine ◆{state.regime.kamikazeMineCost} <span className="text-warning">−fervor</span>
                   </ActionBtn>
                   <ActionBtn onClick={handleRadarLockdown} disabled={!state.regime.radarLockdownAvailable} side="regime" className="w-full">
-                    {state.regime.radarLockdownAvailable ? '📡 Radar Lockdown' : `📡 Cooldown ${state.regime.radarLockdownCooldown}t`}
+                    {state.regime.radarLockdownActive ? `📡 JAMMING... ${state.regime.radarLockdownTimer}t`
+                      : state.regime.radarLockdownAvailable ? '📡 Radar Lockdown (3s jam, 3s cd)' 
+                      : `📡 Cooldown ${state.regime.radarLockdownCooldown}t`}
                   </ActionBtn>
                 </div>
               </Panel>
