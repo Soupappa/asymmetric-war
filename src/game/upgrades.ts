@@ -1,21 +1,5 @@
 import { UpgradeDef } from './types';
 
-// === COALITION DOCTRINE ===
-// Branch 1: SPIN DOCTOR (media/economy)
-//   Sub-branch A: Information War (manipulate public support decay)
-//   Sub-branch B: Economic Leverage (boost economy)
-// Branch 2: WAR FALCON (military power)
-//   Sub-branch A: Lethal Force (strike/fighter power)
-//   Sub-branch B: Tech Advance (defense tech, laser, precision)
-
-// === REGIME DOCTRINE ===
-// Branch 1: SUPREME LEADER (fervor/oil)
-//   Sub-branch A: Ideological Fervor (fervor bonuses)
-//   Sub-branch B: Resource War (oil/economy)
-// Branch 2: TACTICAL HARASSMENT (military/sabotage)
-//   Sub-branch A: Military Efficiency (production, cost)
-//   Sub-branch B: Sabotage & Disruption (mines, radar lockdown, fakes)
-
 export const UPGRADES: UpgradeDef[] = [
   // ==========================================
   // COALITION — SPIN DOCTOR — Information War
@@ -48,7 +32,7 @@ export const UPGRADES: UpgradeDef[] = [
   { id: 'c_gdp_growth', name: 'GDP Stimulus', description: 'Positive economy derivative boost',
     baseCost: 3000, costExponent: 1.65, maxLevel: 8, side: 'coalition', branch: 'Spin Doctor', tier: 2, researchTime: 20,
     effect: () => {} },
-  { id: 'c_allied_aid', name: 'Allied Aid Package', description: 'Periodic free money injection',
+  { id: 'c_allied_aid', name: 'Allied Aid Package', description: 'Periodic debt reduction',
     baseCost: 5000, costExponent: 1.7, maxLevel: 5, side: 'coalition', branch: 'Spin Doctor', tier: 3, researchTime: 25,
     effect: () => {} },
   { id: 'c_war_bonds_upgrade', name: 'Premium Bonds', description: 'Treasury bonds give 20% more income',
@@ -95,6 +79,22 @@ export const UPGRADES: UpgradeDef[] = [
   { id: 'c_mass_production', name: 'Mass Production', description: '−10% all unit costs',
     baseCost: 2000, costExponent: 1.6, maxLevel: 10, side: 'coalition', branch: 'War Falcon', tier: 2, researchTime: 15,
     effect: () => {} },
+
+  // ==========================================
+  // COALITION — WAR FALCON — Reload & Speed
+  // ==========================================
+  { id: 'c_strike_reload', name: 'Strike Fast-Track', description: '−10% strike production time',
+    baseCost: 1000, costExponent: 1.5, maxLevel: 8, side: 'coalition', branch: 'War Falcon', tier: 1, researchTime: 10,
+    effect: () => {} },
+  { id: 'c_fighter_reload', name: 'Fighter Quick-Turn', description: '−8% fighter production time',
+    baseCost: 1500, costExponent: 1.55, maxLevel: 8, side: 'coalition', branch: 'War Falcon', tier: 2, researchTime: 12,
+    effect: () => {} },
+  { id: 'c_construction_speed', name: 'Rapid Deployment', description: '−5% maintenance cost per level',
+    baseCost: 2500, costExponent: 1.6, maxLevel: 6, side: 'coalition', branch: 'War Falcon', tier: 3, researchTime: 18,
+    effect: () => {} },
+  { id: 'c_interceptor_reload', name: 'Interceptor Surge', description: 'Interceptors recharge 15% faster',
+    baseCost: 2000, costExponent: 1.6, maxLevel: 8, side: 'coalition', branch: 'War Falcon', tier: 2, researchTime: 14,
+    effect: (s, l) => { s.coalition.interceptorRechargeTime = Math.max(1, 2 - l * 0.15); } },
 
   // ==========================================
   // REGIME — SUPREME LEADER — Ideological Fervor
@@ -157,6 +157,19 @@ export const UPGRADES: UpgradeDef[] = [
     effect: (s, l) => { s.regime.droneCost = Math.max(1, 8 - l * 0.5); } },
 
   // ==========================================
+  // REGIME — TACTICAL HARASSMENT — Reload & Speed
+  // ==========================================
+  { id: 'r_drone_reload', name: 'Drone Quick-Load', description: '−8% drone production time (stacks with Workshop)',
+    baseCost: 30, costExponent: 1.45, maxLevel: 10, side: 'regime', branch: 'Tactical Harassment', tier: 1, researchTime: 6,
+    effect: () => {} },
+  { id: 'r_missile_reload', name: 'Missile Fast-Arm', description: '−6% missile production time (stacks)',
+    baseCost: 50, costExponent: 1.5, maxLevel: 8, side: 'regime', branch: 'Tactical Harassment', tier: 2, researchTime: 10,
+    effect: () => {} },
+  { id: 'r_construction_speed', name: 'Rapid Fortification', description: '−8% base construction cost',
+    baseCost: 40, costExponent: 1.45, maxLevel: 8, side: 'regime', branch: 'Tactical Harassment', tier: 1, researchTime: 8,
+    effect: () => {} },
+
+  // ==========================================
   // REGIME — TACTICAL HARASSMENT — Sabotage & Disruption
   // ==========================================
   { id: 'r_base_hardening', name: 'Base Hardening', description: 'Bases harder to destroy by strikes',
@@ -189,7 +202,7 @@ export function getMaxUnlockedTier(state: Record<string, { level: number }>, bra
   for (let tier = 1; tier <= 4; tier++) {
     const tierUpgrades = branchUpgrades.filter(u => u.tier === tier);
     const totalLevels = tierUpgrades.reduce((sum, u) => sum + (state[u.id]?.level ?? 0), 0);
-    if (totalLevels >= tier * 3) maxTier = tier + 1; // need tier*3 total levels to unlock next
+    if (totalLevels >= tier * 3) maxTier = tier + 1;
   }
   return Math.min(maxTier, 4);
 }
