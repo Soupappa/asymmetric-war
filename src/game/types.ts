@@ -20,9 +20,12 @@ export interface RegimeBase {
   scansRequired: number;
   scansReceived: number;
   revealed: boolean;
+  revealedType: BaseType | null; // what the scan revealed
   alive: boolean;
   x: number;
   y: number;
+  visibleAfterScan: boolean; // stays visible after scan ends (as "normal")
+  hiddenBase: boolean; // buried/hidden base that disappears after scan
 }
 
 // === UPGRADE SYSTEM ===
@@ -75,6 +78,8 @@ export interface RegimeState {
 
   radarLockdownAvailable: boolean;
   radarLockdownCooldown: number;
+  radarLockdownActive: boolean;
+  radarLockdownTimer: number;
 
   nuclearUnlocked: boolean;
   nuclearProgress: number;
@@ -86,9 +91,8 @@ export interface RegimeState {
 
 // === COALITION STATE ===
 export interface CoalitionState {
-  // Debt-only economy: no money pool, all spending = debt
   debt: number;
-  incomePerTick: number; // from treasury bonds, reduces net debt growth
+  incomePerTick: number;
   debtBreakdownTolerance: number;
 
   // Macro bar
@@ -104,9 +108,9 @@ export interface CoalitionState {
 
   // Interceptor missiles (auto-recharge from patriots)
   interceptorStock: number;
-  interceptorMax: number; // = patriots * 3
+  interceptorMax: number;
   interceptorRechargeTimer: number;
-  interceptorRechargeTime: number; // ticks per interceptor
+  interceptorRechargeTime: number;
 
   // Defense
   patriots: number;
@@ -116,16 +120,17 @@ export interface CoalitionState {
   radarSpots: number;
   radarSpotCost: number;
 
-  // Fog of war: 0.0 = front line (0.42), extends right with radars
-  fogOfWarLimit: number; // x-position on battlefield where fog starts
+  // Fog of war
+  fogOfWarLimit: number;
 
-  // Scan
+  // Scan — no cooldown, exponential cost on consecutive use
   scanAvailable: boolean;
-  scanCooldown: number;
   scanActive: boolean;
   scanTimer: number;
   scanZoneX: number;
   scanZoneY: number;
+  scanConsecutiveCount: number; // increases cost exponentially
+  scanBaseCost: number;
 
   // Stats
   totalStrikes: number;
@@ -134,10 +139,24 @@ export interface CoalitionState {
   strikeAccuracy: number;
   intelligenceModifier: number;
   laserDefense: number;
-  maintenanceCost: number; // constant cost per tick even idle
+  maintenanceCost: number;
+
+  // Interception stats
+  totalIntercepted: number;
+  totalIncoming: number;
 
   // Rafale bonus
   recentStrikeTimestamps: number[];
+
+  // Fear Business
+  fearBusinessAvailable: boolean;
+  fearBusinessActive: boolean;
+  fearBusinessTimer: number; // 9s timer for triple scan-strike bonus
+
+  // Fighter patrol state
+  fightersOnPatrol: number;
+  fighterReturnTimer: number;
+  fighterReloadCost: number;
 }
 
 // === COMBAT LOG ===
