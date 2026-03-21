@@ -28,7 +28,7 @@ export function createInitialState(): GameState {
     regime: {
       money: 150, moneyRegen: 2, oilShippingLevel: 0,
       fervor: 25, dispersion: 25, resilience: 6.25,
-      bases, baseCost: 40,
+      bases, baseCost: 40, baseBuildQueue: [],
       droneStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 3, autoBuy: false, autoLaunch: false },
       missileStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 8, autoBuy: false, autoLaunch: false },
       droneCost: 8, missileCost: 25,
@@ -40,7 +40,7 @@ export function createInitialState(): GameState {
       droneBias: 1, missileBias: 1,
     },
     coalition: {
-      debt: 0, incomePerTick: 0, debtBreakdownTolerance: 10,
+      debt: 0, prevDebt: 0, incomePerTick: 0, debtBreakdownTolerance: 10, publicTaxLevel: 0,
       economy: 100, economyDerivative: 0, publicSupport: 100, publicSupportDerivative: 0, handFree: 100,
       strikeStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 2, autoBuy: false, autoLaunch: false },
       fighterStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 4, autoBuy: false, autoLaunch: false },
