@@ -62,6 +62,7 @@ export interface RegimeState {
 
   bases: RegimeBase[];
   baseCost: number;
+  baseBuildQueue: { type: BaseType; timer: number; buildTime: number }[];
 
   droneStock: StockItem;
   missileStock: StockItem;
@@ -92,8 +93,10 @@ export interface RegimeState {
 // === COALITION STATE ===
 export interface CoalitionState {
   debt: number;
+  prevDebt: number;
   incomePerTick: number;
   debtBreakdownTolerance: number;
+  publicTaxLevel: number;
 
   // Macro bar
   economy: number;
@@ -129,7 +132,7 @@ export interface CoalitionState {
   scanTimer: number;
   scanZoneX: number;
   scanZoneY: number;
-  scanConsecutiveCount: number; // increases cost exponentially
+  scanConsecutiveCount: number;
   scanBaseCost: number;
 
   // Stats
@@ -151,7 +154,7 @@ export interface CoalitionState {
   // Fear Business
   fearBusinessAvailable: boolean;
   fearBusinessActive: boolean;
-  fearBusinessTimer: number; // 9s timer for triple scan-strike bonus
+  fearBusinessTimer: number;
 
   // Fighter patrol state
   fightersOnPatrol: number;

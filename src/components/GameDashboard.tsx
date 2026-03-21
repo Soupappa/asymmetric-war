@@ -5,7 +5,7 @@ import {
   buyPatriot, buyMinigun, buildRadar, buyStrike, buyFighter,
   launchStrikes, launchFighters, issueBonds, publicTax, activateScan,
   activateFearBusiness,
-  regimeBuildBase, buryBase, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
+  regimeBuildBase, buryBase, buryBaseByLevel, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
   oilShipping, deployKamikazeMine, radarLockdown,
 } from '../game/engine';
 import { UPGRADES, getUpgradeCost, getMaxUnlockedTier } from '../game/upgrades';
@@ -166,6 +166,7 @@ export default function GameDashboard() {
     battlefieldRef.current?.addBase();
   }, []);
   const handleBuryBase = useCallback((baseId: string) => setState(s => buryBase(s, baseId)), []);
+  const handleBuryByLevel = useCallback((level: number) => setState(s => buryBaseByLevel(s, level)), []);
   const handleBuyDrones = useCallback((n: number) => setState(s => buyDrones(s, n)), []);
   const handleBuyMissiles = useCallback((n: number) => setState(s => buyMissiles(s, n)), []);
   const handleLaunchDrones = useCallback((n: number) => {
@@ -353,34 +354,13 @@ export default function GameDashboard() {
             )}
 
             {canPlayCoalition && (
-              <Panel title="CONSTRUCTION" side="coalition">
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <Stat label="Patriots" value={state.coalition.patriots} small />
-                  <Stat label="Miniguns" value={state.coalition.miniguns} small />
-                  <Stat label="Radar" value={state.coalition.radarSpots} small />
-                </div>
-                <div className="space-y-1">
-                  <ActionBtn onClick={handleBuyPatriot} side="coalition" className="w-full">
-                    🛡 Patriot +${state.coalition.patriotCost.toLocaleString()} debt
-                  </ActionBtn>
-                  <ActionBtn onClick={handleBuyMinigun} side="coalition" className="w-full">
-                    🔫 Minigun +${state.coalition.minigunCost} debt
-                  </ActionBtn>
-                  <ActionBtn onClick={handleBuildRadar} side="coalition" className="w-full">
-                    📡 Radar +${state.coalition.radarSpotCost.toLocaleString()} debt — extends fog
-                  </ActionBtn>
-                </div>
-              </Panel>
-            )}
-
-            {canPlayCoalition && (
               <Panel title="ECONOMIC & INTEL" side="coalition">
                 <div className="space-y-1">
                   <ActionBtn onClick={handleBonds} side="coalition" className="w-full">
                     📜 Treasury Bonds — +$5K debt, +income/t, +20 economy
                   </ActionBtn>
                   <ActionBtn onClick={handleTax} side="coalition" className="w-full">
-                    💰 Public Tax — −$2K debt, <span className="text-danger">−5 support</span>, +economy
+                    💰 Public Tax — −$2K debt, <span className="text-danger">−5 support</span>, +eco deriv (perm ×{state.coalition.publicTaxLevel})
                   </ActionBtn>
                   <ActionBtn onClick={handleScan} disabled={!state.coalition.scanAvailable || state.coalition.scanActive || state.regime.radarLockdownActive} side="coalition" className="w-full">
                     {state.coalition.scanActive ? `🔍 SCANNING... ${state.coalition.scanTimer}t` 
@@ -398,6 +378,27 @@ export default function GameDashboard() {
                   {state.coalition.fearBusinessActive && (
                     <div className="text-[9px] text-warning">⚡ Fear Business active — {state.coalition.fearBusinessTimer}t</div>
                   )}
+                </div>
+              </Panel>
+            )}
+
+            {canPlayCoalition && (
+              <Panel title="CONSTRUCTION" side="coalition">
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  <Stat label="Patriots" value={state.coalition.patriots} small />
+                  <Stat label="Miniguns" value={state.coalition.miniguns} small />
+                  <Stat label="Radar" value={state.coalition.radarSpots} small />
+                </div>
+                <div className="space-y-1">
+                  <ActionBtn onClick={handleBuyPatriot} side="coalition" className="w-full">
+                    🛡 Patriot +${state.coalition.patriotCost.toLocaleString()} debt
+                  </ActionBtn>
+                  <ActionBtn onClick={handleBuyMinigun} side="coalition" className="w-full">
+                    🔫 Minigun +${state.coalition.minigunCost} debt
+                  </ActionBtn>
+                  <ActionBtn onClick={handleBuildRadar} side="coalition" className="w-full">
+                    📡 Radar +${state.coalition.radarSpotCost.toLocaleString()} debt — extends fog
+                  </ActionBtn>
                 </div>
               </Panel>
             )}
@@ -552,23 +553,37 @@ export default function GameDashboard() {
                     🎭 Fake Base ◆{Math.round(state.regime.baseCost * 0.3)}
                   </ActionBtn>
                 </div>
-                {/* Bury bases */}
-                {aliveBases.filter(b => b.burialLevel < 3).length > 0 && (
-                  <div className="mt-2 border-t border-border pt-2">
-                    <div className="text-[9px] text-muted-foreground mb-1">BURY BASES (hide from strikes)</div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {aliveBases.filter(b => b.burialLevel < 3).slice(0, 8).map(b => {
-                        const tunnelDiscount = 1 - (state.upgrades.r_tunnel_network?.level ?? 0) * 0.2;
-                        const buryCost = Math.round((30 + b.burialLevel * 20) * tunnelDiscount);
-                        return (
-                          <ActionBtn key={b.id} onClick={() => handleBuryBase(b.id)} disabled={state.regime.money < buryCost} side="regime" className="w-full">
-                            ⛏ {b.type} Lv{b.burialLevel}→{b.burialLevel + 1} ◆{buryCost}
-                          </ActionBtn>
-                        );
-                      })}
-                    </div>
+                {/* Build queue */}
+                {state.regime.baseBuildQueue.length > 0 && (
+                  <div className="mt-1 space-y-1">
+                    {state.regime.baseBuildQueue.map((bq, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[9px]">
+                        <span>🔨 {bq.type}</span>
+                        <div className="flex-1 h-1.5 bg-secondary rounded overflow-hidden">
+                          <div className="h-full bg-regime transition-all" style={{ width: `${((bq.buildTime - bq.timer) / bq.buildTime) * 100}%` }} />
+                        </div>
+                        <span>{bq.timer}t</span>
+                      </div>
+                    ))}
                   </div>
                 )}
+                {/* Simplified bury system */}
+                <div className="mt-2 border-t border-border pt-2">
+                  <div className="text-[9px] text-muted-foreground mb-1">BURY BASES (+fervor, hide from strikes)</div>
+                  <div className="space-y-1">
+                    {[1, 2, 3].map(lvl => {
+                      const eligibleCount = aliveBases.filter(b => b.burialLevel === lvl - 1).length;
+                      const tunnelDiscount = 1 - (state.upgrades.r_tunnel_network?.level ?? 0) * 0.2;
+                      const buryCost = Math.round((30 + (lvl - 1) * 20) * tunnelDiscount);
+                      return (
+                        <ActionBtn key={lvl} onClick={() => handleBuryByLevel(lvl)}
+                          disabled={eligibleCount === 0 || state.regime.money < buryCost} side="regime" className="w-full">
+                          ⛏ Bury Lv{lvl} ◆{buryCost} <span className="text-muted-foreground">({eligibleCount} eligible)</span>
+                        </ActionBtn>
+                      );
+                    })}
+                  </div>
+                </div>
               </Panel>
             )}
 

@@ -28,7 +28,7 @@ export function createInitialState(): GameState {
     regime: {
       money: 150, moneyRegen: 2, oilShippingLevel: 0,
       fervor: 25, dispersion: 25, resilience: 6.25,
-      bases, baseCost: 40,
+      bases, baseCost: 40, baseBuildQueue: [],
       droneStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 3, autoBuy: false, autoLaunch: false },
       missileStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 8, autoBuy: false, autoLaunch: false },
       droneCost: 8, missileCost: 25,
@@ -40,7 +40,7 @@ export function createInitialState(): GameState {
       droneBias: 1, missileBias: 1,
     },
     coalition: {
-      debt: 0, incomePerTick: 0, debtBreakdownTolerance: 10,
+      debt: 0, prevDebt: 0, incomePerTick: 0, debtBreakdownTolerance: 10, publicTaxLevel: 0,
       economy: 100, economyDerivative: 0, publicSupport: 100, publicSupportDerivative: 0, handFree: 100,
       strikeStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 2, autoBuy: false, autoLaunch: false },
       fighterStock: { stock: 0, producing: false, productionProgress: 0, productionTime: 4, autoBuy: false, autoLaunch: false },
@@ -214,15 +214,31 @@ export function gameTick(prev: GameState): GameState {
   const totalBurial = aliveBases.reduce((s, b) => s + b.burialLevel, 0);
   r.dispersion = Math.min(100, 15 + aliveBases.length * 2.5 + totalBurial * 3);
 
+  // Burial boosts fervor
+  const burialFervorBonus = totalBurial * 0.1;
+
   const propagandaBonus = (state.upgrades.r_propaganda?.level ?? 0) * 0.15;
   const cultReduction = 1 - (state.upgrades.r_cult_personality?.level ?? 0) * 0.12;
-  r.fervor = Math.min(100, Math.max(0, r.fervor + propagandaBonus));
+  r.fervor = Math.min(100, Math.max(0, r.fervor + propagandaBonus + burialFervorBonus));
   r.fervor = Math.max(0, r.fervor - 0.05 * cultReduction);
   r.resilience = (r.fervor / 100) * (r.dispersion / 100) * 100;
 
   if ((state.upgrades.r_volunteer_army?.level ?? 0) > 0 && r.fervor > 60) {
     const freeRate = (state.upgrades.r_volunteer_army?.level ?? 0) * 0.1;
     if (Math.random() < freeRate) r.droneStock.stock += 1;
+  }
+
+  // Base build queue processing
+  const finishedBases: number[] = [];
+  for (let i = 0; i < r.baseBuildQueue.length; i++) {
+    r.baseBuildQueue[i].timer -= 1;
+    if (r.baseBuildQueue[i].timer <= 0) {
+      r.bases.push(createBase(r.baseBuildQueue[i].type));
+      finishedBases.push(i);
+    }
+  }
+  for (let i = finishedBases.length - 1; i >= 0; i--) {
+    r.baseBuildQueue.splice(finishedBases[i], 1);
   }
 
   // Radar lockdown timer
@@ -240,6 +256,9 @@ export function gameTick(prev: GameState): GameState {
   // === COALITION ECONOMY (debt-only) ===
   const constructionCostBonus = 1 - (state.upgrades.c_construction_speed?.level ?? 0) * 0.05;
   c.maintenanceCost = (50 + c.patriots * 50 + c.miniguns * 10 + c.radarSpots * 20) * Math.max(0.5, constructionCostBonus);
+  
+  // Save previous debt for stability check
+  c.prevDebt = prev.coalition.debt;
   c.debt += c.maintenanceCost / 10;
 
   // Income from bonds reduces debt
@@ -256,24 +275,29 @@ export function gameTick(prev: GameState): GameState {
   const tradeBonus = 1 + (state.upgrades.c_trade_routes?.level ?? 0) * 0.05;
   c.debt = Math.max(0, c.debt - 10 * tradeBonus);
 
-  // Economy derivative based on debt ratio
+  // Economy derivative based on debt ratio + permanent public tax bonus
   const debtRatio = c.debt / state.coalitionPibBase * 100;
   const toleranceBonus = (state.upgrades.c_war_economy?.level ?? 0) * 2;
   const effectiveTolerance = c.debtBreakdownTolerance + toleranceBonus;
   const gdpBonus = (state.upgrades.c_gdp_growth?.level ?? 0) * 0.3;
+  const publicTaxBonus = c.publicTaxLevel * 0.15; // permanent derivative from public tax
   
   if (debtRatio < effectiveTolerance) {
-    c.economyDerivative = 0.1 + gdpBonus;
+    c.economyDerivative = 0.1 + gdpBonus + publicTaxBonus;
   } else {
     const excess = debtRatio - effectiveTolerance;
-    c.economyDerivative = -(excess * excess) * 0.005;
+    c.economyDerivative = -(excess * excess) * 0.005 + publicTaxBonus;
+  }
+
+  // Debt stability bonus: if debt didn't increase, small economy boost
+  if (c.debt <= c.prevDebt && c.debt > 0) {
+    c.economyDerivative += 0.08;
   }
 
   c.economy = Math.max(0, Math.min(100, c.economy + c.economyDerivative - r.kamikazeMineCount * 0.5));
 
   // === FOG OF WAR ===
   if (r.radarLockdownActive) {
-    // During lockdown, fog is pushed back to frontline
     c.fogOfWarLimit = 0.42;
   } else {
     c.fogOfWarLimit = 0.42 + c.radarSpots * 0.06;
@@ -658,8 +682,8 @@ export function publicTax(state: GameState): GameState {
   const taxAmount = 2000;
   s.coalition.debt = Math.max(0, s.coalition.debt - taxAmount);
   s.coalition.publicSupport = Math.max(0, s.coalition.publicSupport - 5);
-  // Public tax boosts economy derivative
-  s.coalition.economyDerivative += 0.5;
+  // Public tax permanently increases economy derivative
+  s.coalition.publicTaxLevel += 1;
   s.coalition.economy = Math.min(100, s.coalition.economy + 5);
   return s;
 }
@@ -721,7 +745,23 @@ export function regimeBuildBase(state: GameState, type: 'military' | 'civilian' 
   if (state.regime.money < cost) return state;
   const s: GameState = JSON.parse(JSON.stringify(state));
   s.regime.money -= cost;
-  s.regime.bases.push(createBase(type));
+  const buildTime = Math.max(2, Math.round((type === 'military' ? 8 : type === 'civilian' ? 5 : 3) * Math.max(0.5, buildSpeedBonus)));
+  s.regime.baseBuildQueue.push({ type, timer: buildTime, buildTime });
+  return s;
+}
+
+export function buryBaseByLevel(state: GameState, targetLevel: number): GameState {
+  const bases = state.regime.bases.filter(b => b.alive && b.burialLevel === targetLevel - 1);
+  if (bases.length === 0) return state;
+  const base = bases[Math.floor(Math.random() * bases.length)];
+  const tunnelDiscount = 1 - (state.upgrades.r_tunnel_network?.level ?? 0) * 0.2;
+  const cost = (30 + (targetLevel - 1) * 20) * tunnelDiscount;
+  if (state.regime.money < cost) return state;
+  const s: GameState = JSON.parse(JSON.stringify(state));
+  const b = s.regime.bases.find(b2 => b2.id === base.id)!;
+  s.regime.money -= cost;
+  b.burialLevel = targetLevel;
+  b.hiddenBase = true;
   return s;
 }
 
