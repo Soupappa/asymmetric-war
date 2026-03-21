@@ -5,6 +5,9 @@ import {
   buyPatriot, buyMinigun, buildRadar, buyStrike, buyFighter,
   launchStrikes, launchFighters, issueBonds, publicTax, activateScan,
   activateFearBusiness,
+  regimeBuildBase, buryBase, buryBaseByLevel, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
+  oilShipping, deployKamikazeMine, radarLockdown,
+  activateFearBusiness,
   regimeBuildBase, buryBase, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
   oilShipping, deployKamikazeMine, radarLockdown,
 } from '../game/engine';
@@ -166,6 +169,7 @@ export default function GameDashboard() {
     battlefieldRef.current?.addBase();
   }, []);
   const handleBuryBase = useCallback((baseId: string) => setState(s => buryBase(s, baseId)), []);
+  const handleBuryByLevel = useCallback((level: number) => setState(s => buryBaseByLevel(s, level)), []);
   const handleBuyDrones = useCallback((n: number) => setState(s => buyDrones(s, n)), []);
   const handleBuyMissiles = useCallback((n: number) => setState(s => buyMissiles(s, n)), []);
   const handleLaunchDrones = useCallback((n: number) => {
