@@ -354,34 +354,13 @@ export default function GameDashboard() {
             )}
 
             {canPlayCoalition && (
-              <Panel title="CONSTRUCTION" side="coalition">
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <Stat label="Patriots" value={state.coalition.patriots} small />
-                  <Stat label="Miniguns" value={state.coalition.miniguns} small />
-                  <Stat label="Radar" value={state.coalition.radarSpots} small />
-                </div>
-                <div className="space-y-1">
-                  <ActionBtn onClick={handleBuyPatriot} side="coalition" className="w-full">
-                    🛡 Patriot +${state.coalition.patriotCost.toLocaleString()} debt
-                  </ActionBtn>
-                  <ActionBtn onClick={handleBuyMinigun} side="coalition" className="w-full">
-                    🔫 Minigun +${state.coalition.minigunCost} debt
-                  </ActionBtn>
-                  <ActionBtn onClick={handleBuildRadar} side="coalition" className="w-full">
-                    📡 Radar +${state.coalition.radarSpotCost.toLocaleString()} debt — extends fog
-                  </ActionBtn>
-                </div>
-              </Panel>
-            )}
-
-            {canPlayCoalition && (
               <Panel title="ECONOMIC & INTEL" side="coalition">
                 <div className="space-y-1">
                   <ActionBtn onClick={handleBonds} side="coalition" className="w-full">
                     📜 Treasury Bonds — +$5K debt, +income/t, +20 economy
                   </ActionBtn>
                   <ActionBtn onClick={handleTax} side="coalition" className="w-full">
-                    💰 Public Tax — −$2K debt, <span className="text-danger">−5 support</span>, +economy
+                    💰 Public Tax — −$2K debt, <span className="text-danger">−5 support</span>, +eco deriv (perm ×{state.coalition.publicTaxLevel})
                   </ActionBtn>
                   <ActionBtn onClick={handleScan} disabled={!state.coalition.scanAvailable || state.coalition.scanActive || state.regime.radarLockdownActive} side="coalition" className="w-full">
                     {state.coalition.scanActive ? `🔍 SCANNING... ${state.coalition.scanTimer}t` 
@@ -399,6 +378,27 @@ export default function GameDashboard() {
                   {state.coalition.fearBusinessActive && (
                     <div className="text-[9px] text-warning">⚡ Fear Business active — {state.coalition.fearBusinessTimer}t</div>
                   )}
+                </div>
+              </Panel>
+            )}
+
+            {canPlayCoalition && (
+              <Panel title="CONSTRUCTION" side="coalition">
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  <Stat label="Patriots" value={state.coalition.patriots} small />
+                  <Stat label="Miniguns" value={state.coalition.miniguns} small />
+                  <Stat label="Radar" value={state.coalition.radarSpots} small />
+                </div>
+                <div className="space-y-1">
+                  <ActionBtn onClick={handleBuyPatriot} side="coalition" className="w-full">
+                    🛡 Patriot +${state.coalition.patriotCost.toLocaleString()} debt
+                  </ActionBtn>
+                  <ActionBtn onClick={handleBuyMinigun} side="coalition" className="w-full">
+                    🔫 Minigun +${state.coalition.minigunCost} debt
+                  </ActionBtn>
+                  <ActionBtn onClick={handleBuildRadar} side="coalition" className="w-full">
+                    📡 Radar +${state.coalition.radarSpotCost.toLocaleString()} debt — extends fog
+                  </ActionBtn>
                 </div>
               </Panel>
             )}
