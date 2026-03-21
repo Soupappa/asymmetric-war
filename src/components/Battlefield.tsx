@@ -508,8 +508,9 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
           }
           if (p.progress >= 1) {
             p.alive = false;
-            p.explosionTimer = p.type === 'strike' ? 1.0 : p.type === 'missile' ? 0.8 : p.type === 'interceptor' ? 0.3 : p.type === 'fighter' ? 0.1 : 0.4;
-            impactsRef.current.push({ x: curX, y: curY, timer: 1.5, success: p.type !== 'strike' && p.type !== 'fighter', type: p.type });
+            p.explosionTimer = p.type === 'strike' ? 1.0 : p.type === 'missile' ? 1.5 : p.type === 'interceptor' ? 0.5 : p.type === 'fighter' ? 0.1 : 0.4;
+            const isHit = p.type !== 'strike' && p.type !== 'fighter' && p.type !== 'interceptor';
+            impactsRef.current.push({ x: curX, y: curY, timer: isHit ? 3.0 : 1.5, success: isHit, type: p.type });
           }
 
           // Trail rendering

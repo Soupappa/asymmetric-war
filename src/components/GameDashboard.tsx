@@ -553,23 +553,37 @@ export default function GameDashboard() {
                     🎭 Fake Base ◆{Math.round(state.regime.baseCost * 0.3)}
                   </ActionBtn>
                 </div>
-                {/* Bury bases */}
-                {aliveBases.filter(b => b.burialLevel < 3).length > 0 && (
-                  <div className="mt-2 border-t border-border pt-2">
-                    <div className="text-[9px] text-muted-foreground mb-1">BURY BASES (hide from strikes)</div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {aliveBases.filter(b => b.burialLevel < 3).slice(0, 8).map(b => {
-                        const tunnelDiscount = 1 - (state.upgrades.r_tunnel_network?.level ?? 0) * 0.2;
-                        const buryCost = Math.round((30 + b.burialLevel * 20) * tunnelDiscount);
-                        return (
-                          <ActionBtn key={b.id} onClick={() => handleBuryBase(b.id)} disabled={state.regime.money < buryCost} side="regime" className="w-full">
-                            ⛏ {b.type} Lv{b.burialLevel}→{b.burialLevel + 1} ◆{buryCost}
-                          </ActionBtn>
-                        );
-                      })}
-                    </div>
+                {/* Build queue */}
+                {state.regime.baseBuildQueue.length > 0 && (
+                  <div className="mt-1 space-y-1">
+                    {state.regime.baseBuildQueue.map((bq, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[9px]">
+                        <span>🔨 {bq.type}</span>
+                        <div className="flex-1 h-1.5 bg-secondary rounded overflow-hidden">
+                          <div className="h-full bg-regime transition-all" style={{ width: `${((bq.buildTime - bq.timer) / bq.buildTime) * 100}%` }} />
+                        </div>
+                        <span>{bq.timer}t</span>
+                      </div>
+                    ))}
                   </div>
                 )}
+                {/* Simplified bury system */}
+                <div className="mt-2 border-t border-border pt-2">
+                  <div className="text-[9px] text-muted-foreground mb-1">BURY BASES (+fervor, hide from strikes)</div>
+                  <div className="space-y-1">
+                    {[1, 2, 3].map(lvl => {
+                      const eligibleCount = aliveBases.filter(b => b.burialLevel === lvl - 1).length;
+                      const tunnelDiscount = 1 - (state.upgrades.r_tunnel_network?.level ?? 0) * 0.2;
+                      const buryCost = Math.round((30 + (lvl - 1) * 20) * tunnelDiscount);
+                      return (
+                        <ActionBtn key={lvl} onClick={() => handleBuryByLevel(lvl)}
+                          disabled={eligibleCount === 0 || state.regime.money < buryCost} side="regime" className="w-full">
+                          ⛏ Bury Lv{lvl} ◆{buryCost} <span className="text-muted-foreground">({eligibleCount} eligible)</span>
+                        </ActionBtn>
+                      );
+                    })}
+                  </div>
+                </div>
               </Panel>
             )}
 
