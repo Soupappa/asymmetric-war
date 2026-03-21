@@ -7,9 +7,6 @@ import {
   activateFearBusiness,
   regimeBuildBase, buryBase, buryBaseByLevel, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
   oilShipping, deployKamikazeMine, radarLockdown,
-  activateFearBusiness,
-  regimeBuildBase, buryBase, buyDrones, buyMissiles, regimeLaunchDrones, regimeLaunchMissiles,
-  oilShipping, deployKamikazeMine, radarLockdown,
 } from '../game/engine';
 import { UPGRADES, getUpgradeCost, getMaxUnlockedTier } from '../game/upgrades';
 import Battlefield, { BattlefieldHandle } from './Battlefield';
