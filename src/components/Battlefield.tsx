@@ -555,19 +555,25 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
             ctx.fillStyle = 'hsl(0, 50%, 55%)';
             ctx.beginPath(); ctx.arc(curX, curY, 2, 0, Math.PI * 2); ctx.fill();
           } else if (p.type === 'interceptor') {
-            const grd = ctx.createRadialGradient(curX, curY, 0, curX, curY, 8);
-            grd.addColorStop(0, 'hsla(210, 100%, 90%, 1)');
-            grd.addColorStop(0.3, 'hsla(210, 100%, 65%, 0.7)');
+            // Bright blue interceptor missile — very visible
+            const grd = ctx.createRadialGradient(curX, curY, 0, curX, curY, 12);
+            grd.addColorStop(0, 'hsla(210, 100%, 95%, 1)');
+            grd.addColorStop(0.2, 'hsla(210, 100%, 75%, 0.9)');
+            grd.addColorStop(0.5, 'hsla(210, 100%, 55%, 0.4)');
             grd.addColorStop(1, 'hsla(210, 80%, 40%, 0)');
             ctx.fillStyle = grd;
-            ctx.beginPath(); ctx.arc(curX, curY, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(curX, curY, 12, 0, Math.PI * 2); ctx.fill();
             const angle = Math.atan2(p.targetY - p.y, p.targetX - p.x);
             ctx.save(); ctx.translate(curX, curY); ctx.rotate(angle);
-            ctx.fillStyle = 'hsl(210, 50%, 70%)';
-            ctx.fillRect(-6, -1.5, 12, 3);
             ctx.fillStyle = 'hsl(210, 80%, 80%)';
-            ctx.fillRect(4, -2, 3, 4);
+            ctx.fillRect(-8, -2, 16, 4);
+            ctx.fillStyle = 'hsl(210, 100%, 90%)';
+            ctx.fillRect(6, -3, 5, 6);
             ctx.restore();
+            // Label
+            ctx.font = '7px JetBrains Mono';
+            ctx.fillStyle = 'hsla(210, 80%, 70%, 0.7)';
+            ctx.fillText('INT', curX - 6, curY - 10);
           } else {
             const grd = ctx.createRadialGradient(curX, curY, 0, curX, curY, 10);
             grd.addColorStop(0, 'hsla(20, 100%, 80%, 1)');
