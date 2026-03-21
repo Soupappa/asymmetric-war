@@ -633,13 +633,27 @@ const Battlefield = forwardRef<BattlefieldHandle, { state: GameState }>(({ state
         imp.timer -= dt;
         if (imp.timer <= 0) continue;
         aliveImpacts.push(imp);
-        const alpha = imp.timer * 0.5;
+        const alpha = Math.min(1, imp.timer * 0.6);
         if (imp.success) {
-          ctx.strokeStyle = `hsla(0, 70%, 55%, ${alpha})`;
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.arc(imp.x, imp.y, 8, 0, Math.PI * 2); ctx.stroke();
-          ctx.fillStyle = `hsla(0, 60%, 50%, ${alpha * 0.3})`;
-          ctx.beginPath(); ctx.arc(imp.x, imp.y, 4, 0, Math.PI * 2); ctx.fill();
+          // Missile/drone hit — big visible red impact
+          const pulseR = 6 + (1 - imp.timer / 3.0) * 20;
+          // Outer shockwave
+          ctx.strokeStyle = `hsla(0, 90%, 55%, ${alpha * 0.6})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(imp.x, imp.y, pulseR + 8, 0, Math.PI * 2); ctx.stroke();
+          // Inner glow
+          const grd = ctx.createRadialGradient(imp.x, imp.y, 0, imp.x, imp.y, pulseR);
+          grd.addColorStop(0, `hsla(15, 100%, 70%, ${alpha})`);
+          grd.addColorStop(0.5, `hsla(0, 90%, 50%, ${alpha * 0.5})`);
+          grd.addColorStop(1, 'hsla(0, 80%, 40%, 0)');
+          ctx.fillStyle = grd;
+          ctx.beginPath(); ctx.arc(imp.x, imp.y, pulseR, 0, Math.PI * 2); ctx.fill();
+          // Impact text
+          if (imp.timer > 2.0) {
+            ctx.font = '10px Orbitron';
+            ctx.fillStyle = `hsla(0, 90%, 65%, ${alpha})`;
+            ctx.fillText(imp.type === 'missile' ? '💥 HIT' : '💥', imp.x - 12, imp.y - pulseR - 4);
+          }
         }
       }
       impactsRef.current = aliveImpacts;
