@@ -11,6 +11,15 @@ export interface StockItem {
   autoLaunch: boolean;
 }
 
+export interface FlightGroup {
+  launched: number;
+  intercepted: number;
+  impacts: number;
+  timer: number;
+  targetX?: number;
+  targetY?: number;
+}
+
 // === REGIME BASE TYPES ===
 export type BaseType = 'military' | 'civilian' | 'fake';
 export interface RegimeBase {
@@ -26,6 +35,7 @@ export interface RegimeBase {
   y: number;
   visibleAfterScan: boolean; // stays visible after scan ends (as "normal")
   hiddenBase: boolean; // buried/hidden base that disappears after scan
+  knownToCoalition: boolean; // If true, it was scanned/seen and stays "gray"
 }
 
 // === UPGRADE SYSTEM ===
@@ -72,6 +82,10 @@ export interface RegimeState {
 
   totalDronesLaunched: number;
   totalMissilesLaunched: number;
+  manualDronesToLaunch: number;
+  manualMissilesToLaunch: number;
+  flyingDrones: (FlightGroup & { minigunDamage?: number })[];
+  flyingMissiles: FlightGroup[];
   antiAirLevel: number;
 
   kamikazeMineCount: number;
@@ -88,6 +102,12 @@ export interface RegimeState {
 
   droneBias: number;
   missileBias: number;
+
+  // Endgame stats
+  totalMoneySpent: number;
+  totalBasesBuilt: number;
+  totalDroneImpacts: number;
+  totalMissileImpacts: number;
 }
 
 // === COALITION STATE ===
@@ -122,6 +142,7 @@ export interface CoalitionState {
   minigunCost: number;
   radarSpots: number;
   radarSpotCost: number;
+  patriotUnits: { reloadTimer: number }[];
 
   // Fog of war
   fogOfWarLimit: number;
@@ -134,10 +155,14 @@ export interface CoalitionState {
   scanZoneY: number;
   scanConsecutiveCount: number;
   scanBaseCost: number;
+  scanSector: 'north' | 'south'; // Alternates each time
+  scanSizeMultiplier: number; // For the new upgrade
 
   // Stats
   totalStrikes: number;
   successfulStrikes: number;
+  manualStrikesToLaunch: number;
+  flyingStrikes: FlightGroup[];
   strikePower: number;
   strikeAccuracy: number;
   intelligenceModifier: number;
@@ -147,6 +172,15 @@ export interface CoalitionState {
   // Interception stats
   totalIntercepted: number;
   totalIncoming: number;
+  totalMissilesIncoming: number;
+  totalMissilesIntercepted: number;
+  totalDronesIncoming: number;
+  totalDronesIntercepted: number;
+  totalPatriotShots: number;
+  totalMinigunKills: number;
+  totalDronePatriotKills: number;
+  totalMinigunBullets: number;
+  radarDamage: number;
 
   // Rafale bonus
   recentStrikeTimestamps: number[];
@@ -157,9 +191,15 @@ export interface CoalitionState {
   fearBusinessTimer: number;
 
   // Fighter patrol state
-  fightersOnPatrol: number;
-  fighterReturnTimer: number;
+  flyingFighters: { id: string; state: 'patrol' | 'returning' | 'reloading'; timer: number; maxTimer: number; targetX: number; targetY: number }[];
+  manualFightersToLaunch: number;
   fighterReloadCost: number;
+  minigunFireRate: number;
+  minigunProjectileSpeed: number;
+
+  // Endgame stats
+  totalDebtAccumulated: number;
+  totalFightersLaunched: number;
 }
 
 // === COMBAT LOG ===
@@ -174,8 +214,10 @@ export interface CombatLog {
   basesDestroyed: number;
   civilianHits: number;
   fakeBasesHit: number;
+  radarsDestroyed?: number;
   event?: string;
   eventColor?: string;
+  satiricalEvent?: string;
 }
 
 // === GAME STATE ===

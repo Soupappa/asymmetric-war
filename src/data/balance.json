@@ -1,0 +1,729 @@
+{
+  "global": {
+    "coalitionPibBase": 12000000000,
+    "militaryBaseCount": 20,
+    "combatLogMaxEntries": 20,
+    "percentScale": 100
+  },
+  "phases": {
+    "earlyMaxTickExclusive": 200,
+    "midMaxTickExclusive": 800,
+    "nuclearResilienceThreshold": 95
+  },
+  "createBase": {
+    "xMin": 0.6,
+    "xRange": 0.35,
+    "yMin": 0.08,
+    "yRange": 0.84,
+    "civilianScansRequired": 1,
+    "fakeScansRequired": 1
+  },
+  "regime": {
+    "initial": {
+      "money": 500,
+      "moneyRegen": 4,
+      "fervor": 25,
+      "dispersion": 25,
+      "resilience": 6.25,
+      "baseCost": 25,
+      "droneProductionTime": 3,
+      "missileProductionTime": 8,
+      "droneCost": 8,
+      "missileCost": 25,
+      "kamikazeMineCost": 30,
+      "droneBias": 1,
+      "missileBias": 1,
+      "initialDroneStock": 50,
+      "initialMissileStock": 20
+    },
+    "economy": {
+      "moneyRegenBase": 2,
+      "oilShippingIncomePerLevel": 3,
+      "moneyRegenPerAliveBase": 0.3,
+      "oilDiminishingMin": 0.2,
+      "oilDiminishingPerShippingLevel": 0.1,
+      "dispersionBase": 15,
+      "dispersionPerBase": 1,
+      "dispersionPerBurialLevel": 2,
+      "dispersionCap": 100,
+      "burialFervorPerTotalBurial": 0.1,
+      "fervorDecay": 0.05,
+      "fervorCap": 100,
+      "volunteerArmyFervorThreshold": 60,
+      "volunteerArmyFreeRatePerLevel": 0.1,
+      "kamikazeEconomyPenaltyPerMine": 0.5
+    },
+    "oilShipping": {
+      "baseCost": 20,
+      "costPerLevel": 10
+    },
+    "build": {
+      "civilianCostMultiplier": 0.6,
+      "fakeCostMultiplier": 0.3,
+      "constructionSpeedDiscountPerLevel": 0.08,
+      "minCostMultiplier": 0.5,
+      "militaryBuildTicks": 4,
+      "civilianBuildTicks": 5,
+      "fakeBuildTicks": 3,
+      "minBuildTicks": 2
+    },
+    "bury": {
+      "maxBurialLevel": 3,
+      "baseCost": 30,
+      "costPerBurialLevel": 20,
+      "tunnelDiscountPerLevel": 0.2
+    },
+    "kamikaze": {
+      "fervorLoss": 2
+    },
+    "radarLockdown": {
+      "activeTicks": 3,
+      "cooldownTicks": 6
+    },
+    "nuclear": {
+      "newBaseBurialLevel": 3,
+      "newBaseScansRequired": 3,
+      "progressPerTick": 0.2,
+      "winProgress": 100
+    }
+  },
+  "coalition": {
+    "initial": {
+      "debtBreakdownTolerance": 10,
+      "economy": 80,
+      "publicSupport": 40,
+      "handFree": 80,
+      "strikeProductionTime": 2,
+      "fighterProductionTime": 15,
+      "interceptorStock": 40,
+      "interceptorRechargeTime": 0.6,
+      "patriots": 10,
+      "patriotCost": 800,
+      "miniguns": 8,
+      "minigunCost": 400,
+      "radarSpots": 1,
+      "radarSpotCost": 1500,
+      "fogOfWarLimit": 0.3,
+      "scanZoneX": 0.7,
+      "scanZoneY": 0.5,
+      "scanBaseCost": 200,
+      "strikePower": 1,
+      "strikeAccuracy": 0.5,
+      "intelligenceModifier": 1,
+      "maintenanceCost": 90,
+      "fighterReloadCost": 50,
+      "minigunFireRate": 3,
+      "minigunProjectileSpeed": 25,
+      "initialStrikeStock": 3,
+      "initialFighterStock": 18
+    },
+    "economy": {
+      "maintenanceBase": 50,
+      "maintenancePerPatriot": 50,
+      "maintenancePerMinigun": 10,
+      "maintenancePerRadar": 20,
+      "constructionSpeedDiscountPerLevel": 0.05,
+      "maintenanceCostMinMultiplier": 0.5,
+      "debtFromMaintenanceDivisor": 10,
+      "alliedAidTickInterval": 50,
+      "alliedAidDebtReductionPerLevel": 500,
+      "tradeRouteDebtReductionBase": 25,
+      "tradeRouteDebtReductionPerLevel": 10,
+      "debtRatioToPercentMultiplier": 65,
+      "warEconomyToleranceBonusPerLevel": 6,
+      "gdpGrowthDerivativePerLevel": 0.3,
+      "publicTaxDerivativePerLevel": 0.15,
+      "positiveEconomyDerivative": 0.1,
+      "debtExcessPenaltyCoefficient": 0.005,
+      "debtStabilityBonus": 3,
+      "economyCap": 100,
+      "fearBusinessPublicSupportThreshold": 25
+    },
+    "fog": {
+      "lockdownLimit": 0.42,
+      "radarSpotVisibilityPerSpot": 0.06,
+      "radarMaxVisibility": 1,
+      "detectionFogMin": 0.42,
+      "detectionFogRange": 0.58,
+      "buildRadarBaseLimit": 0.42
+    },
+    "scan": {
+      "consecutiveDecayTickInterval": 30,
+      "fakeRemovalTickModulo": 3,
+      "activeTicks": 3,
+      "costExponent": 1.8,
+      "camouflageRevealPenaltyPerLevel": 0.15
+    },
+    "fearBusiness": {
+      "strikeValuePerStock": 2000,
+      "fighterValuePerStock": 4000,
+      "salePriceMultiplier": 3,
+      "economyBoost": 50,
+      "activeTicks": 9,
+      "scanStrikeBonus": 3,
+      "buriedBonusDuringScan": 2,
+      "fearMultiplier": 3
+    },
+    "bonds": {
+      "debtAmount": 10000,
+      "incomePerTick": 50,
+      "toleranceBonus": 0.5,
+      "economyBoost": 20
+    },
+    "tax": {
+      "debtReduction": 20000,
+      "publicSupportLoss": 10,
+      "economyBoost": 5
+    },
+    "patriots": {
+      "interceptorsPerPatriot": 1,
+      "interceptorsGrantedOnPurchase": 1,
+      "minInterceptorReloadTicks": 4
+    },
+    "fighterPatrol": {
+      "returnTicks": 60,
+      "dronesPerFighterIntercept": 2,
+      "strafeChancePerFighter": 0.02
+    }
+  },
+  "simulation": {
+    "production": {
+      "droneFactoryTimeReductionPerLevel": 0.12,
+      "droneReloadTimeReductionPerLevel": 0.08,
+      "missileFactoryTimeReductionPerLevel": 0.1,
+      "missileReloadTimeReductionPerLevel": 0.06,
+      "strikeReloadTimeReductionPerLevel": 0.2,
+      "fighterReloadTimeReductionPerLevel": 0.08,
+      "minDroneProductionTicks": 1,
+      "minMissileProductionTicks": 2,
+      "minStrikeProductionTicks": 1,
+      "minFighterProductionTicks": 1
+    },
+    "autoBuy": {
+      "strikeOrderDebt": 800,
+      "fighterOrderDebt": 2000
+    },
+    "fervor": {
+      "discountMin": 0.3,
+      "discountPerFervor": 0.005
+    },
+    "upgrades": {
+      "oilRefineryBonusPerLevel": 0.15,
+      "smugglingReductionPerLevel": 0.08,
+      "propagandaFervorPerLevel": 0.15,
+      "cultFervorDecayReductionPerLevel": 0.12,
+      "warBondsIncomeBonusPerLevel": 0.2,
+      "tradeRouteBonusPerLevel": 0.05,
+      "strikeReloadBonusPerLevel": 0.1,
+      "fighterReloadBonusPerLevel": 0.08,
+      "constructionSpeedMaintenanceBonusPerLevel": 0.05,
+      "mediaCampaignSupportBonusPerLevel": 0.1,
+      "censorshipMissilePenaltyPerLevel": 0.12,
+      "warFatigueResistPerLevel": 0.1,
+      "carpetSupportPenaltyPerLevel": 0.08,
+      "embeddedJournalistsPerBasePerLevel": 0.5,
+      "stealthDroneReductionPerLevel": 0.08,
+      "minigunUpgradePerLevel": 0.2,
+      "minigunAntiDronePerUnit": 4,
+      "decoyMissileReductionPerLevel": 0.08,
+      "patriotUpgradePerLevel": 0.15,
+      "baseHardeningPerLevel": 0.12,
+      "carpetStrikePowerPerLevel": 0.5,
+      "antiAirPerLevel": 0.15
+    },
+    "combat": {
+      "autoLaunchMaxDrones": 5,
+      "autoLaunchMaxMissiles": 2,
+      "autoLaunchStrikesPerTick": 1,
+      "interceptionSupportThreshold": 0.95,
+      "interceptionSupportBonus": 0.05,
+      "interceptionDeficitSquaredMultiplier": 5,
+      "missileImpactSupportMultiplier": 1.5,
+      "droneImpactSupportMultiplier": 0.2,
+      "naturalSupportDecayPerTick": 0.02,
+      "droneImpactFervor": 0.5,
+      "missileImpactFervor": 2,
+      "unscannedCivilianSupportLoss": 8,
+      "unscannedCivilianFervorLoss": 3,
+      "doctrineStrengthRatio": 1.3,
+      "doctrineBiasPrimaryStep": 0.003,
+      "doctrineBiasSecondaryStep": 0.001,
+      "doctrineBiasMin": 0.5,
+      "doctrineBiasMax": 3,
+      "missileHitsToDestroyRadar": 3,
+      "patriotBackupRange": 0.85
+    },
+    "tierUnlock": {
+      "maxTier": 4,
+      "levelsRequiredMultiplier": 3
+    }
+  },
+  "upgrades": {
+    "c_media_campaign": {
+      "baseCost": 800,
+      "costExponent": 1.5,
+      "maxLevel": 10,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 1,
+      "researchTime": 12
+    },
+    "c_embedded_journalists": {
+      "baseCost": 1200,
+      "costExponent": 1.6,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 1,
+      "researchTime": 15
+    },
+    "c_censorship": {
+      "baseCost": 2000,
+      "costExponent": 1.65,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 2,
+      "researchTime": 20
+    },
+    "c_narrative_control": {
+      "baseCost": 3000,
+      "costExponent": 1.7,
+      "maxLevel": 5,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 3,
+      "researchTime": 25
+    },
+    "c_war_fatigue_resist": {
+      "baseCost": 5000,
+      "costExponent": 1.75,
+      "maxLevel": 5,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 4,
+      "researchTime": 30
+    },
+    "c_war_economy": {
+      "baseCost": 1000,
+      "costExponent": 1.55,
+      "maxLevel": 15,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 1,
+      "researchTime": 10
+    },
+    "c_trade_routes": {
+      "baseCost": 1500,
+      "costExponent": 1.6,
+      "maxLevel": 12,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 1,
+      "researchTime": 15
+    },
+    "c_gdp_growth": {
+      "baseCost": 3000,
+      "costExponent": 1.65,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 2,
+      "researchTime": 20
+    },
+    "c_allied_aid": {
+      "baseCost": 5000,
+      "costExponent": 1.7,
+      "maxLevel": 5,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 3,
+      "researchTime": 25
+    },
+    "c_war_bonds_upgrade": {
+      "baseCost": 4000,
+      "costExponent": 1.65,
+      "maxLevel": 6,
+      "side": "coalition",
+      "branch": "Spin Doctor",
+      "tier": 3,
+      "researchTime": 22
+    },
+    "c_precision": {
+      "baseCost": 1200,
+      "costExponent": 1.6,
+      "maxLevel": 12,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 1,
+      "researchTime": 15,
+      "strikeAccuracyPerLevel": 0.05
+    },
+    "c_bunker_buster": {
+      "baseCost": 3000,
+      "costExponent": 1.7,
+      "maxLevel": 5,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 2,
+      "researchTime": 25
+    },
+    "c_carpet": {
+      "baseCost": 4000,
+      "costExponent": 1.75,
+      "maxLevel": 5,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 3,
+      "researchTime": 30
+    },
+    "c_fighter_doctrine": {
+      "baseCost": 2000,
+      "costExponent": 1.6,
+      "maxLevel": 10,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 1,
+      "researchTime": 15
+    },
+    "c_intelligence": {
+      "baseCost": 2500,
+      "costExponent": 1.65,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 2,
+      "researchTime": 20,
+      "intelligencePerLevel": 0.1
+    },
+    "c_patriot_upgrade": {
+      "baseCost": 1500,
+      "costExponent": 1.6,
+      "maxLevel": 10,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 1,
+      "researchTime": 12
+    },
+    "c_minigun_upgrade": {
+      "baseCost": 800,
+      "costExponent": 1.5,
+      "maxLevel": 12,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 1,
+      "researchTime": 10
+    },
+    "c_laser": {
+      "baseCost": 5000,
+      "costExponent": 1.75,
+      "maxLevel": 10,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 3,
+      "researchTime": 30,
+      "laserPerLevel": 3
+    },
+    "c_radar_upgrade": {
+      "baseCost": 2000,
+      "costExponent": 1.6,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 2,
+      "researchTime": 18
+    },
+    "c_scan_upgrade": {
+      "baseCost": 3000,
+      "costExponent": 1.65,
+      "maxLevel": 5,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 2,
+      "researchTime": 20
+    },
+    "c_scan_size": {
+      "baseCost": 4000,
+      "costExponent": 1.7,
+      "maxLevel": 5,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 3,
+      "researchTime": 25
+    },
+    "c_mass_production": {
+      "baseCost": 2000,
+      "costExponent": 1.6,
+      "maxLevel": 10,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 2,
+      "researchTime": 15
+    },
+    "c_strike_reload": {
+      "baseCost": 1000,
+      "costExponent": 1.5,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 1,
+      "researchTime": 10
+    },
+    "c_fighter_reload": {
+      "baseCost": 1500,
+      "costExponent": 1.55,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 2,
+      "researchTime": 12
+    },
+    "c_construction_speed": {
+      "baseCost": 2500,
+      "costExponent": 1.6,
+      "maxLevel": 6,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 3,
+      "researchTime": 18
+    },
+    "c_interceptor_reload": {
+      "baseCost": 2000,
+      "costExponent": 1.6,
+      "maxLevel": 8,
+      "side": "coalition",
+      "branch": "War Falcon",
+      "tier": 2,
+      "researchTime": 14,
+      "interceptorBaseRechargeTime": 2,
+      "interceptorRechargeReductionPerLevel": 0.15
+    },
+    "r_propaganda": {
+      "baseCost": 30,
+      "costExponent": 1.4,
+      "maxLevel": 15,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 1,
+      "researchTime": 8
+    },
+    "r_martyrdom": {
+      "baseCost": 60,
+      "costExponent": 1.5,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 2,
+      "researchTime": 15
+    },
+    "r_cult_personality": {
+      "baseCost": 100,
+      "costExponent": 1.6,
+      "maxLevel": 6,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 3,
+      "researchTime": 20
+    },
+    "r_jihad_tax": {
+      "baseCost": 40,
+      "costExponent": 1.45,
+      "maxLevel": 10,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 1,
+      "researchTime": 10
+    },
+    "r_volunteer_army": {
+      "baseCost": 120,
+      "costExponent": 1.6,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 3,
+      "researchTime": 22
+    },
+    "r_oil_refinery": {
+      "baseCost": 50,
+      "costExponent": 1.5,
+      "maxLevel": 12,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 1,
+      "researchTime": 10
+    },
+    "r_smuggling": {
+      "baseCost": 80,
+      "costExponent": 1.55,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 2,
+      "researchTime": 15
+    },
+    "r_war_profiteering": {
+      "baseCost": 100,
+      "costExponent": 1.6,
+      "maxLevel": 6,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 2,
+      "researchTime": 18
+    },
+    "r_black_market": {
+      "baseCost": 150,
+      "costExponent": 1.65,
+      "maxLevel": 5,
+      "side": "regime",
+      "branch": "Supreme Leader",
+      "tier": 3,
+      "researchTime": 22
+    },
+    "r_drone_factory": {
+      "baseCost": 25,
+      "costExponent": 1.45,
+      "maxLevel": 15,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 1,
+      "researchTime": 8
+    },
+    "r_missile_factory": {
+      "baseCost": 45,
+      "costExponent": 1.5,
+      "maxLevel": 12,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 1,
+      "researchTime": 10
+    },
+    "r_swarm_tactics": {
+      "baseCost": 60,
+      "costExponent": 1.55,
+      "maxLevel": 10,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 2,
+      "researchTime": 15
+    },
+    "r_warhead_upgrade": {
+      "baseCost": 80,
+      "costExponent": 1.6,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 2,
+      "researchTime": 18
+    },
+    "r_stealth_drones": {
+      "baseCost": 100,
+      "costExponent": 1.6,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 3,
+      "researchTime": 20
+    },
+    "r_submunitions": {
+      "baseCost": 150,
+      "costExponent": 1.7,
+      "maxLevel": 5,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 4,
+      "researchTime": 28
+    },
+    "r_cheap_drones": {
+      "baseCost": 20,
+      "costExponent": 1.4,
+      "maxLevel": 15,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 1,
+      "researchTime": 6,
+      "cheapDroneBaseCost": 8,
+      "cheapDroneReductionPerLevel": 0.5
+    },
+    "r_drone_reload": {
+      "baseCost": 30,
+      "costExponent": 1.45,
+      "maxLevel": 10,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 1,
+      "researchTime": 6
+    },
+    "r_missile_reload": {
+      "baseCost": 50,
+      "costExponent": 1.5,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 2,
+      "researchTime": 10
+    },
+    "r_construction_speed": {
+      "baseCost": 40,
+      "costExponent": 1.45,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 1,
+      "researchTime": 8
+    },
+    "r_base_hardening": {
+      "baseCost": 60,
+      "costExponent": 1.55,
+      "maxLevel": 10,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 1,
+      "researchTime": 12
+    },
+    "r_decoy_missiles": {
+      "baseCost": 80,
+      "costExponent": 1.6,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 2,
+      "researchTime": 15
+    },
+    "r_tunnel_network": {
+      "baseCost": 70,
+      "costExponent": 1.55,
+      "maxLevel": 8,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 2,
+      "researchTime": 18
+    },
+    "r_camouflage": {
+      "baseCost": 90,
+      "costExponent": 1.6,
+      "maxLevel": 6,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 3,
+      "researchTime": 20
+    },
+    "r_radar_jam": {
+      "baseCost": 120,
+      "costExponent": 1.65,
+      "maxLevel": 5,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 3,
+      "researchTime": 22
+    },
+    "r_anti_air": {
+      "baseCost": 50,
+      "costExponent": 1.5,
+      "maxLevel": 15,
+      "side": "regime",
+      "branch": "Tactical Harassment",
+      "tier": 1,
+      "researchTime": 8
+    }
+  }
+}
